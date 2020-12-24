@@ -77,33 +77,24 @@ def process_day(state, origin):
             neighbors = hex_ + neighbor_idx
 
             # get the state of each of the neighbors
-            flipped = 0
-            for n in neighbors:
-                # check current state
-                idx = tuple(n)
-                if current[idx]:
-                    flipped += 1
-
-                # check if this has been processed; if no, 
-                #  add to the list for the next round (if within bounds)
-                if not processed[idx]:
-                    # needs to be greater than 1 away from the edge
-                    s = result.shape
-                    if (0<n[0]<s[0]-1) and (0<n[1]<s[1]-1) and (0<n[2]<s[2]-1):
-                        new_hexes.append(n)
+            indices = tuple(neighbors.T)
+            flipped = current[indices].sum()
+            checked = processed[indices]
+            valid_idx = np.all(np.logical_and((1 - neighbors),(result.shape - neighbors > 1)),1)
+            new_hexes += neighbors[np.logical_and(np.logical_not(checked),valid_idx)].tolist()
 
             # our rules are:
             #  If Flipped: change to white if count != 1,2
             #  If not Flipped: change to black if count == 2
             idx = tuple(hex_)
-            if current[idx] and flipped not in [1,2]:
+            cur = current[idx]
+            if cur and flipped not in [1,2]:
                 result[idx] = False
-            elif not current[idx] and flipped == 2:
+            elif not cur and flipped == 2:
                 result[idx] = True
 
             # mark as processed
             processed[idx] = True
-
 
         # update our processing list
         print(len(new_hexes))
