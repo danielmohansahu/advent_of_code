@@ -5,6 +5,7 @@ Hexagon grid reference: https://www.redblobgames.com/grids/hexagons/
 import csv
 import copy
 import numpy as np
+import time
 
 def to_xyz(move):
     """ Convert a given sequence of moves (from 0,0,0) to Cubic Coordinates.
@@ -35,6 +36,11 @@ def to_xyz(move):
             import pdb;pdb.set_trace()
     return coords
 
+def borders_flipped(array):
+    """ Return true if any of the border elements are flipped.
+    """
+    return  array[0,:,:].any() or array[-1,:,:].any() or array[:,0,:].any() or array[:,-1,:].any() or array[:,:,0].any() or array[:,:,-1].any()
+
 def process_day(state, origin):
     """ Apply the tile flipping rules to the floor for a single day.
     """
@@ -42,8 +48,18 @@ def process_day(state, origin):
     current = np.pad(state, 1)
     origin += np.ones(3,dtype=int)
 
+    # initialize neighbor permutations
+    neighbor_idx = np.array([
+        [0,1,-1],
+        [0,-1,1],
+        [1,0,-1],
+        [-1,0,1],
+        [-1,1,0],
+        [1,-1,0]
+    ])
+
     # if we have flipped elements on the boundary we'll permanantly pad (another layer)
-    if state[0,:,:].any() or state[-1,:,:].any() or state[:,0,:].any() or state[:,-1,:].any() or state[:,:,0].any() or state[:,:,-1].any():
+    if borders_flipped(state):
         print("Padding results.")
         current = np.pad(current, 1)
         origin += np.ones(3,dtype=int)
@@ -54,18 +70,12 @@ def process_day(state, origin):
     hexes = [origin]
 
     while len(hexes) != 0:
+        # initialize next round's output
         new_hexes = []
-
         for hex_ in hexes:
             # get the neighbors
-            neighbors = [
-                hex_ + np.array([1,-1,0]),
-                hex_ + np.array([1,0,-1]),
-                hex_ + np.array([0,1,-1]),
-                hex_ + np.array([-1,1,0]),
-                hex_ + np.array([-1,0,1]),
-                hex_ + np.array([0,-1,1])
-            ]
+            neighbors = hex_ + neighbor_idx
+
             # get the state of each of the neighbors
             flipped = 0
             for n in neighbors:
@@ -78,10 +88,8 @@ def process_day(state, origin):
                 #  add to the list for the next round (if within bounds)
                 if not processed[idx]:
                     # needs to be greater than 1 away from the edge
-                    off_boundary = True
-                    for i in range(3):
-                        off_boundary &= (0 < n[i] < result.shape[i]-1)
-                    if off_boundary:
+                    s = result.shape
+                    if (0<n[0]<s[0]-1) and (0<n[1]<s[1]-1) and (0<n[2]<s[2]-1):
                         new_hexes.append(n)
 
             # our rules are:
@@ -96,13 +104,15 @@ def process_day(state, origin):
             # mark as processed
             processed[idx] = True
 
+
         # update our processing list
         print(len(new_hexes))
         hexes = new_hexes
 
-    # remove the padding and return
-    result = result[1:-1,1:-1,1:-1]
-    origin -= np.ones(3,dtype=int)
+    # while possible remove padding
+    while not borders_flipped(result):
+        result = result[1:-1,1:-1,1:-1]
+        origin -= np.ones(3,dtype=int)
     return result, origin
 
 if __name__ == "__main__":
