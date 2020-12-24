@@ -67,9 +67,13 @@ def process_day(state, origin):
     # then go through each index and check the rules
     result = current.copy()
     processed = np.zeros(result.shape,dtype=bool)
-    hexes = [origin]
 
-    while len(hexes) != 0:
+    # consider all the flipped tiles first
+    hexes = np.array(np.where(current)).T.tolist()
+
+    # we should only need to process twice; one for all the black tiles
+    #  and one for their white neighbors
+    for i in range(2):
         # initialize next round's output
         new_hexes = []
         for hex_ in hexes:
@@ -80,8 +84,7 @@ def process_day(state, origin):
             indices = tuple(neighbors.T)
             flipped = current[indices].sum()
             checked = processed[indices]
-            valid_idx = np.all(np.logical_and((1 - neighbors),(result.shape - neighbors > 1)),1)
-            new_hexes += neighbors[np.logical_and(np.logical_not(checked),valid_idx)].tolist()
+            new_hexes += neighbors[np.logical_not(checked)].tolist()
 
             # our rules are:
             #  If Flipped: change to white if count != 1,2
@@ -97,7 +100,6 @@ def process_day(state, origin):
             processed[idx] = True
 
         # update our processing list
-        print(len(new_hexes))
         hexes = new_hexes
 
     # while possible remove padding
@@ -109,7 +111,7 @@ def process_day(state, origin):
 if __name__ == "__main__":
     # load data
     moves = []
-    with open("example.txt", "r") as csvfile:
+    with open("input.txt", "r") as csvfile:
         reader = csv.reader(csvfile)
         # first read in moves
         for row in reader:
