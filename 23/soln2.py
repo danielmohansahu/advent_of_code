@@ -2,109 +2,83 @@ import csv
 import time
 import copy
 import numpy as np
-from itertools import cycle,islice
-from numba import jit
 
-@jit(nopython=True)
-def first_index(array, item, hint=0):
-    # first start at the hint
-    for idx, val in np.ndenumerate(array[hint:]):
-        if val == item:
-            return idx[0]
-    # If no item was found start again at the beginning
-    for idx, val in np.ndenumerate(array):
-        if val == item:
-            return idx[0]
+def display(order, start):
+    """ Convert to readable format.
+    """
+    res = []
+    c = start
+    while len(res) < len(order)-1:
+        res.append(str(c))
+        c = order[c]
+    return " ".join(res)
 
-@jit(nopython=True)
-def first_index_rev(array, item, hint=-1):
-    # first start at the hint
-    for idx, val in np.ndenumerate(array[hint::-1]):
-        if val == item:
-            return idx[0]
-    # If no item was found start again at the beginning
-    for idx, val in np.ndenumerate(array[-1::-1]):
-        if val == item:
-            return idx[0]
-
-def move(order, current, max_):
+def move(order, current):
     """ Perform a move on the given list.
     Returns the new current cup.
     """
-
-    # get index of current position
-    cur_idx = int(first_index(order, current))
+    # get next three cups
+    popped = [order[current]]
+    for i in range(2):
+        popped.append(order[popped[-1]])
     
-    # initialize output as the ordering with removed cups
-    popped = np.array(list(islice(cycle(order),cur_idx+1,cur_idx+4)))
-
-    # some optimization
-    result = np.copy(order)
-    if np.all(order[cur_idx+1:cur_idx+4] == popped):
-        result[cur_idx+1:-3] = order[cur_idx+4:]
-    else:
-        result[:-3] = order[~np.in1d(order,popped)]
-
-    # find destination cup
+    # find destination
     dest = current
-    success = False
-    while not success:
-        # decrement, and check if this wraps around
-        dest -= 1
-        if dest == 0:
-            dest = max_
-        # check if it's in our popped list  
+    while True:
+        dest = (dest-1) if (dest-1 != 0) else len(order)-1
         if dest not in popped:
-            success = True
+            break
 
-    # get destination index
-    dest_idx = int(first_index_rev(result, dest, dest))
+    # update relevant indices
+    temp = copy.deepcopy(order)
+    temp[current] = order[popped[-1]]
+    temp[dest] = popped[0]
+    temp[popped[-1]] = order[dest]
 
-    # insert popped section
-    result[dest_idx+4:] = result[dest_idx+1:-3]
-    result[dest_idx+1:dest_idx+4] = popped
-
-    # get new current cup and return
-    cur_idx = cur_idx if (result[cur_idx] == current) else int(first_index(result, current, cur_idx))
-    new_current = list(islice(cycle(result), cur_idx+1, cur_idx+2))[0]
+    order = temp
+    current = order[current]
 
     # debugging
-    # print("\tcurren: {}".format(current))
-    # print("\tpopped: {}".format(popped))
-    # print("\tdestin: {}".format(dest))
+    print("\tcurren: {}".format(current))
+    print("\tpopped: {}".format(popped))
+    print("\tdestin: {}".format(dest))
     
-    return new_current, result
+    return current, order
 
 if __name__ == "__main__":
     # load data
-    data = ""
+    string = ""
     with open("example.txt", "r") as csvfile:
         reader = csv.reader(csvfile)
         # first read in rules
         for row in reader:
             if len(row) != 0:
-                data = row[0]
+                string = row[0]
 
-    # pad with the remaining 1000000
-    data = [int(d) for d in data]
-    data = np.array(data + list(range(max(data)+1,1000000+1)))
+    # convert to a mapping from index to next value
+    data = np.zeros(len(string)+1,dtype=int)
+    for i,s in enumerate(string[:-1]):
+        data[int(s)] = int(string[i+1]) 
+    # make sure to complete the circle of wrapping
+    data[int(string[-1])] = int(string[0])
 
-    # process 10000000 moves
-    iterations = 10000000
-    current = data[0]
-    max_ = np.max(data)
+    # process all moves
+    iterations = 10
+    current = int(string[0])
     ordering = copy.deepcopy(data)
-    print("Iteration {}".format(0))
     st = time.time()
+    print("Iteration {} : {}".format(0,display(ordering,current)))
     for i in range(iterations):
-        current,ordering = move(ordering, current, max_)
-        if (i%1000 == 0 and i!=0):
+        current,ordering = move(ordering, current)
+        if ((i+1)%1 == 0):
             est = (time.time() - st) * (iterations/(i+1) - 1)
-            print("Iteration {}, ETA: {:.2f} min".format(i+1,est/60))
+            print("Iteration {}: {}, ETA: {:.2f} min".format(i+1,display(ordering,current),est/60))
 
     # find index of 1
     idx = int(np.where(ordering == 1)[0][0])
-    after_one = list(islice(cycle(ordering), idx, idx+3))
+    val1 = ordering[ordering[idx]]
+    val2 = ordering[val1]
+    print("Values after 1: {},{}".format(val1,val2))
 
     import pdb;pdb.set_trace()
     
