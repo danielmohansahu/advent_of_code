@@ -1,3 +1,4 @@
+import sys
 import csv
 import numpy as np
 from collections import defaultdict
@@ -47,6 +48,23 @@ def orient(squares, id_, desired):
     # if we've gotten this far something is wrong
     print("Failed to orient square.")
     import pdb;pdb.set_trace()
+
+def search(picture, mask):
+    """ Search through the given picture for matches with the given mask.
+
+    Note that we only care about True elements of the mask, False can be
+    anything in the picture.
+    """
+    key_indices = np.where(mask == 1)
+    count = 0
+    for i in range(picture.shape[0]-mask.shape[0]):
+        for j in range(picture.shape[1]-mask.shape[1]):
+            # apply mask to this subsection
+            combined = np.logical_and(mask,picture[i:i+mask.shape[0],j:j+mask.shape[1]])
+            # check important indices
+            if np.all(combined[key_indices]):
+                count += 1
+    return count
 
 if __name__ == "__main__":
     # load data
@@ -185,6 +203,34 @@ if __name__ == "__main__":
     picture = picture.T
     print("Combined picture: ({}x{})".format(*picture.shape))
     print(picture.T)
+
+    # Our "sea monster" mask:
+    mask = np.array([
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+        [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+        [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0]],
+        dtype=int)
+
+    # search our picture for monsters
+    for i in range(3):
+        temp = picture.copy()
+        if i == 1:
+            temp = np.flip(temp,0)
+            print("Checking flipped picture (axis 0):")
+        elif i == 2:
+            temp = np.flip(temp,1)
+            print("Checking flipped picture (axis 1):")
+        else:
+            print("Checking non-flipped picture:")
+
+        # rotate and check
+        for j in range(4):
+            count = search(temp, mask)
+            if count != 0:
+                print(temp)
+                print("Found {} sea monsters!!".format(count))
+                sys.exit()
+            temp = np.rot90(temp)
 
     import code
     code.interact(local=locals())
