@@ -56,20 +56,22 @@ def search(picture, mask):
     anything in the picture.
     """
     key_indices = np.where(mask == 1)
-    count = 0
+    monsters = 0
     for i in range(picture.shape[0]-mask.shape[0]):
         for j in range(picture.shape[1]-mask.shape[1]):
             # apply mask to this subsection
             combined = np.logical_and(mask,picture[i:i+mask.shape[0],j:j+mask.shape[1]])
             # check important indices
             if np.all(combined[key_indices]):
-                count += 1
-    return count
+                monsters += 1
+    # if we've got monsters calculate the roughness
+    roughness = picture.sum() - mask.sum()*monsters
+    return monsters,roughness
 
 if __name__ == "__main__":
     # load data
     data = {}
-    with open("example.txt", "r") as csvfile:
+    with open("input.txt", "r") as csvfile:
         reader = csv.reader(csvfile)
         # read in all data
         idrow = next(reader)[0]
@@ -225,10 +227,10 @@ if __name__ == "__main__":
 
         # rotate and check
         for j in range(4):
-            count = search(temp, mask)
-            if count != 0:
+            monsters,roughness = search(temp, mask)
+            if monsters != 0:
                 print(temp)
-                print("Found {} sea monsters!!".format(count))
+                print("Found {} sea monsters!! Roughness: {}".format(monsters, roughness))
                 sys.exit()
             temp = np.rot90(temp)
 
