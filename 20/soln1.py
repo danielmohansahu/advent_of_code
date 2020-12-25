@@ -3,6 +3,51 @@ import numpy as np
 from collections import defaultdict
 from square import Square
 
+def oriented(square, desired):
+    """ Return True if the given square is oriented as desired.
+    """
+    success = True
+    neighbors = square.neighbors
+    for side,id_ in desired.items():
+        if id_ is None:
+            success &= (side not in neighbors)
+        else:
+            success &= (side in neighbors and neighbors[side] == id_)
+        if not success:
+            return success
+    return success
+
+
+def orient(squares, id_, desired):
+    """ Return a copy of the square at given id_, rotated and/or flipped
+         to ensure it has neighbors at the desired sides.
+    """
+    # check if we're given a class or id
+    square = None
+    if isinstance(id_, int):
+        square = squares[id_]
+    else:
+        square = id_
+
+    # check all permutations until aligned
+    temp = square.copy()
+    for i in range(3):
+        # flip, if necessary
+        if i == 1:
+            temp = square.flip(0)
+        elif i == 2:
+            temp = square.flip(1)
+        # rotate up to 360 degrees
+        for j in range(4):
+            # check stop conditions
+            if oriented(temp, desired):
+                return temp
+            temp = temp.rotate()
+
+    # if we've gotten this far something is wrong
+    print("Failed to orient square.")
+    import pdb;pdb.set_trace()
+
 if __name__ == "__main__":
     # load data
     data = {}
@@ -26,8 +71,6 @@ if __name__ == "__main__":
 
     # convert to our Square object
     squares = {key:Square(key,value) for key,value in data.items()}
-    size = int(np.sqrt(len(squares)))
-    picture = np.zeros((size,size))
 
     # part 1, find the product of each corner
 
@@ -62,6 +105,77 @@ if __name__ == "__main__":
     for c in corners:
         prod *= c 
     print("Corner product: {}".format(prod))
+
+    # now we go through and actually join the picture
+    size = int(np.sqrt(len(squares)))
+    picture_keys = np.zeros((size,size),dtype=int)
+    oriented_squares = {}
+
+    # start by orienting a corner to be the top left square
+    #  orient and flip as needed to have no neighbors to the top or left
+    start = orient(squares, corners[0], {"top": None, "left": None})
+    oriented_squares[start.id] = start
+    remaining_squares = list(squares.keys())
+    remaining_squares.remove(start.id)
+    picture_keys[0,0] = start.id
+
+    print("Starting to build out picture.")
+
+    # go through the rest of the picture and add each square's neighbors
+    for i in range(size):
+        for j in range(size):
+            # skip first, already done
+            if i == j == 0:
+                continue
+            # find this square's desired neighbors
+            desired = {}
+            known_sides = {}
+            # handle left side
+            if i == 0:
+                desired["top"] = None
+            else:
+                desired["top"] = picture_keys[i-1,j]
+                known_sides["top"] = oriented_squares[picture_keys[i-1,j]].bottom()
+            # handle top side
+            if j == 0:
+                desired["left"] = None
+            else:
+                desired["left"] = picture_keys[i,j-1]
+                known_sides["left"] = oriented_squares[picture_keys[i,j-1]].right()
+            # handle right side (might be unknown)
+            if i == size-1:
+                desired["bottom"] = None
+            # handle bottom side (might be unknown)
+            if j == size-1:
+                desired["right"] = None
+
+            # we must have a known key here, or something's wrong
+            assert(len(known_sides) != 0)
+
+            # find the one square which has a neighbor as our known side
+            target = [k for k in remaining_squares if all([squares[k].adjacent(side) for side in known_sides.values()])]
+
+            # some sanity checks
+            assert(len(target) == 1)
+            target = target[0]
+
+            # check if we need to flip this square to align
+            square = squares[target]
+            for side,val in known_sides.items():
+                if not square.adjacent(val, strict=True):
+                    # flip about axis 
+                    square = square.flip(0 if side=="top" else 1)
+
+            # orient square
+            square = orient(squares, square, desired)
+            oriented_squares[square.id] = square
+            picture_keys[i,j] = square.id
+            remaining_squares.remove(square.id)
+
+            print("\t pixel ({},{}) done.".format(i,j))
+
+    import code
+    code.interact(local=locals())
 
 
 
