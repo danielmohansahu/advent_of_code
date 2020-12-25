@@ -174,6 +174,18 @@ if __name__ == "__main__":
 
             print("\t pixel ({},{}) done.".format(i,j))
 
+    # combine into a real array (without borders)
+    s = start.data.shape[0]-2
+    picture = np.zeros((s*size,s*size),dtype=int)
+    for i in range(size):
+        for j in range(size):
+            picture[s*i:s*(i+1),s*j:s*(j+1)] = oriented_squares[picture_keys[i,j]].data[1:-1,1:-1]
+
+    # Actually printing the transpose, since that's what they get in the example
+    picture = picture.T
+    print("Combined picture: ({}x{})".format(*picture.shape))
+    print(picture.T)
+
     import code
     code.interact(local=locals())
 
