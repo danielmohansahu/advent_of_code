@@ -4,40 +4,49 @@ class Square:
     def __init__(self, id_, data):
         self.id = id_
         self.data = data
-        self.neighbors = []
+        self.neighbors = {}
+
+    def is_corner(self):
+        """ Return true if we have exactly two adjacent squares.
+        """
+        neighbors = len(self.neighbors)
+
+        # sanity check that we've been initialized
+        try:
+            assert(0 < neighbors <= 4)
+        except:
+            import pdb;pdb.set_trace()
+        return (neighbors == 2)
+
+    def is_side(self):
+        """ Return true if we have exactly two adjacent squares.
+        """
+        neighbors = len(self.neighbors)
+        # sanity check that we've been initialized
+        assert(0 < neighbors <= 4)
+        return (neighbors == 3)
 
     def edges(self):
-        """ Return a list of all possible edge hashes.
+        """ Return a list of all possible edges.
         """
-        shape = self.data.shape[0]
-        opts = set([
-            hash(str(self.data[0,:shape])),
-            hash(str(self.data[shape-1,:shape])),
-            hash(str(self.data[:shape,0])),
-            hash(str(self.data[:shape,shape-1])),
-        ])
-        return opts
+        return set([self.top(), self.bottom(), self.left(), self.right()])
 
-    def adjacent(self, other):
-        """ Return True if this edge is adjacent to another square.
-        """
-        # sanity check
-        assert(self.id != other.id)
+    def top(self):
+        return "".join("1" if d else "0" for d in self.data[0,:])
 
-        # compare edges
-        common_edges = set.intersection(self.edges(),other.edges())
-        assert(len(common_edges) <= 1)
-        
-        # save this, if adjacent
-        if len(common_edges) == 1:
-            self.neighbors.append(other.id)
-            return True
+    def bottom(self):
+        return "".join("1" if d else "0" for d in self.data[-1,:])
 
-        return False
+    def left(self):
+        return "".join("1" if d else "0" for d in self.data[:,0])
 
-    def flip(self, axis):
-        """ Return a flipped copy of this square along the desired axis.
-        """
-        return Square(self.id, np.flip(self.data,axis))
+    def right(self):
+        return "".join("1" if d else "0" for d in self.data[:,-1])
 
-        
+    def set_neighbor(self, side, id_):
+        # lots of sanity checks; this should only get set once, etc.
+        assert(side in ["top", "bottom", "left", "right"])
+        assert(id_ not in self.neighbors.values())
+        assert(side not in self.neighbors)
+        self.neighbors[side] = id_
+

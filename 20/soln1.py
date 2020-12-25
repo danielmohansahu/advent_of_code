@@ -25,36 +25,43 @@ if __name__ == "__main__":
                     data[current] = nprow
 
     # convert to our Square object
-    data = {key:Square(key,value) for key,value in data.items()}
+    squares = {key:Square(key,value) for key,value in data.items()}
+    size = int(np.sqrt(len(squares)))
+    picture = np.zeros((size,size))
 
-    # part 1, find the sums of each corner
-    #  to solve this we note that all we need to do is find
-    #  the 4 (hopefully unique) squares that have exactly
-    #  2 edges matching the other arrays
+    # part 1, find the product of each corner
 
-    corners = []
-    matches = defaultdict(list)
-    # try to find the two that match
-    for main_key, main_square in data.items():
-        # check all other key options
-        count = 0
-        for key,square in data.items():
-            # skip duplicate
+    # first, we go through and find which squares are adjacent to each other
+    for main_key,main_square in squares.items():
+        # get edges
+        top = set([main_square.top(), main_square.top()[::-1]])
+        bottom = set([main_square.bottom(), main_square.bottom()[::-1]])
+        left = set([main_square.left(), main_square.left()[::-1]])
+        right = set([main_square.right(), main_square.right()[::-1]])
+        # evaluate this square against every other square
+        for key,square in squares.items():
+            edges = square.edges()
+            # skip ourselves
             if key == main_key:
                 continue
-            # check how many edges match;
-            # we need to check the normal square and its flipped orientations
-            if main_square.adjacent(square) or main_square.adjacent(square.flip(0)) or main_square.adjacent(square.flip(1)):
-                count += 1
+            # check if our top has a neighbor 
+            if len(top.intersection(edges)) != 0:
+                main_square.set_neighbor("top", key)
+            elif len(bottom.intersection(edges)) != 0:
+                main_square.set_neighbor("bottom", key)
+            elif len(left.intersection(edges)) != 0:
+                main_square.set_neighbor("left", key)
+            elif len(right.intersection(edges)) != 0:
+                main_square.set_neighbor("right", key)
 
-        # if we've got a count of 2 that's (hopefully) a corner
-        if count == 2:
-            corners.append(main_key)
-    
-    # Print out the multiplication of the corners
+    # find our corners (those that only have 2 neighbors)
+    corners = [k for k,s in squares.items() if s.is_corner()]
     assert(len(corners)==4)
-    total = 1
+
+    prod = 1
     for c in corners:
-        total *= c
-    print("Corner mult: {}".format(total))
+        prod *= c 
+    print("Corner product: {}".format(prod))
+
+
 
