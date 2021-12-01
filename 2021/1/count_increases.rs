@@ -15,21 +15,32 @@ fn main()
   let reader = BufReader::new(file);
 
   // iterate through text file, counting the number of increasing differences
-  let (mut count, mut prev) : (usize, usize) = (0, 0);
+  let (mut raw_count, mut sliding_count, mut prev, mut prev2, mut prev3) : (usize, usize, usize, usize, usize) = (0, 0, 0, 0, 0);
   for (index, line) in reader.lines().enumerate()
   {
     // extract value of line and convert to integer
     let line = line.expect("Unable to read line");
     let value : usize = line.parse().expect("Unable to parse line.");
 
-    // skip first line
-    if (index != 1) && (value > prev)
+    // skip first line when considering the raw increases count
+    if (index != 0) && (value > prev)
     {
-      count += 1;
+      raw_count += 1;
     }
-    // track previous line
-    prev = value
+
+    // skip first two lines when considering the sliding scale count
+    if (index > 2) && ( (prev2 + prev + value) > (prev3 + prev2 + prev) )
+    {
+      println!("{} > {}, incrementing.", (prev2 + prev + value), (prev3 + prev2 + prev));
+      sliding_count += 1;
+    }
+
+    // track previous lines
+    prev3 = prev2;
+    prev2 = prev;
+    prev = value;
   }
 
-  println!("Found {} increasing measurments.", count);
+  println!("Found {} increasing measurements.", raw_count);
+  println!("Found {} increasing measurements with sliding scale filter.", sliding_count);
 }
