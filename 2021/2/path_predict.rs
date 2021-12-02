@@ -10,7 +10,7 @@ fn main()
   let filename = "commands.txt";
 
   // initialize results
-  let (mut horizontal, mut vertical) : (usize, usize) = (0, 0);
+  let (mut h1, mut h2, mut v1, mut v2, mut aim) : (usize, usize, usize, usize, usize) = (0, 0, 0, 0, 0);
 
   // set up buffered file reader
   let file = File::open(filename).expect("Couldn't read given file!.");
@@ -27,15 +27,19 @@ fn main()
 
     if direction == "forward"
     {
-      horizontal += distance;
+      h1 += distance;
+      h2 += distance;
+      v2 += aim * distance;
     }
     else if direction == "down"
     {
-      vertical += distance;
+      aim += distance;
+      v1 += distance;
     }
     else if direction == "up"
     {
-      vertical -= distance;
+      aim -= distance;
+      v1 -= distance;
     }
     else
     {
@@ -43,6 +47,7 @@ fn main()
     }
   }
 
-  println!("Got displacement ({}, {}) - multiplied is {}", horizontal, vertical, horizontal * vertical);
+  println!("Part 1 got displacement ({}, {}) - multiplied is {}", h1, v1, h1 * v1);
+  println!("Part 2 got displacement ({}, {}) - multiplied is {}", h2, v2, h2 * v2);
 
 }
