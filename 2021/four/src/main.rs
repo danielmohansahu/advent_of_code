@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader};
 // const FILENAME : &str = "example.txt";
 const FILENAME : &str= "cards.txt";
 
-fn parse_cards(filename : &str, cards : &mut Vec<Vec<(u8,bool)>>, turns : &mut Vec<u8>) -> std::io::Result<()> {
+fn parse_cards(filename : &str, cards : &mut Vec<(Vec<(u8,bool)>,bool)>, turns : &mut Vec<u8>) -> std::io::Result<()> {
     // extract the turn order and set of cards from the given file
 
     // set up a reader and file object
@@ -33,14 +33,14 @@ fn parse_cards(filename : &str, cards : &mut Vec<Vec<(u8,bool)>>, turns : &mut V
         // iterate through the remaining lines (cards) and extract their information
         if line.chars().count() == 0 {
             // we've reached the start of a new card - initialize it
-            assert!(cards.len() == 0 || cards.last().expect("This should exist").len() == 25);
-            cards.push(Vec::new());
+            assert!(cards.len() == 0 || cards.last().expect("This should exist").0.len() == 25);
+            cards.push((Vec::new(),false));
             continue;
         } else {
             // otherwise we want to append this value to our previous card
             for element in line.split_whitespace() {
                 let element : u8 = element.parse().expect("Got non-digit input.");
-                cards.last_mut().expect("Missing last element").push((element, false));
+                cards.last_mut().expect("Missing last element").0.push((element, false));
             }
         }
         // println!("Current line: {}", line);
@@ -89,27 +89,28 @@ fn score(card : & Vec<(u8,bool)>, turn : u8) -> u32 {
         }
     }
 
-    println!("{} * {} = {}", unmarked_sum, turn, unmarked_sum * turn);
+    println!("Winning card! Score: {} * {} = {}", unmarked_sum, turn, unmarked_sum * turn);
     unmarked_sum * turn
 }
 
 fn main() {
     // extract card information
-    let mut cards : Vec<Vec<(u8,bool)>> = Vec::new();
+    let mut cards : Vec<(Vec<(u8,bool)>,bool)> = Vec::new();
     let mut turns : Vec<u8> = Vec::new();
     parse_cards(FILENAME, &mut cards, &mut turns).expect("Unable to parse input.");
 
     println!("Playing BINGO from input {}", FILENAME);
 
     // iterate through the turn order, starting from turn 5, until we get a winner
-    let mut winner_found = false;
     for turn in turns {
-        if !winner_found {
-            for card in &mut cards {
-                if mark_and_eval(card, turn) {
-                    score(card, turn);
-                    winner_found = true;
-                    break;
+        for card in &mut cards {
+            // skip already winning cards
+            if !card.1 {
+                if mark_and_eval(&mut card.0, turn) {
+                    // calculate the score of this card
+                    score(&card.0, turn);
+                    // indicate that this card won, so we can ignore it
+                    card.1 = true;
                 }
             }
         }
