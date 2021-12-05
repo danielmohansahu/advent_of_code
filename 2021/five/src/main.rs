@@ -69,27 +69,28 @@ fn draw(map: &mut Vec<Vec<u32>>, segment: &(Point,Point)) {
     // mark all cells in the given map that this segment touches
     let (start, end) = (&segment.0, &segment.1);
 
-    // check if this is a horizontal or vertical line, and
-    //  whether we need to walk forward or backwards
-    let vert: bool = start.x == end.x;
-    let reverse: bool = if vert {end.y < start.y} else {end.x < start.x};
-    println!("Vert: {}, Reverse: {}", vert, reverse);
+    // determine how we need to increment to draw this properly
+    //  we only consider horizontal, vertical and 45 degree angles
+    let (mut dx, mut dy): (i32, i32) = (0,0);
+    if start.x == end.x {
+        dx = 0;
+    } else if start.x < end.x {
+        dx = 1;
+    } else {
+        dx = -1;
+    }
+    if start.y == end.y {
+        dy = 0;
+    } else if start.y < end.y {
+        dy = 1;
+    } else {
+        dy = -1;
+    }
     
     // create convenience function to increment
     let increment = |point: &mut Point| {
-        if vert && reverse {
-            // walk backwards in y
-            point.y -= 1;
-        } else if vert && !reverse {
-            // walk forwards in y
-            point.y += 1;
-        } else if !vert && reverse {
-            // walk backwards in x
-            point.x -= 1;
-        } else if !vert && !reverse {
-            // walk forwards in x
-            point.x += 1;
-        }
+        point.x += dx;
+        point.y += dy;
     };
 
     // create a 'current point' for drawing
@@ -117,10 +118,6 @@ fn main() {
 
     // iterate through all segments, drawing them on the map
     for segment in vents.iter() {
-        // skip diagonal lines
-        if (segment.0.x != segment.1.x) && (segment.0.y != segment.1.y) {
-            continue;
-        }
         draw(&mut map, &segment);
     }
 
