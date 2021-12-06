@@ -7,13 +7,13 @@ use std::io::{BufRead, BufReader};
 
 // const FILENAME: &str = "example.txt";
 const FILENAME: &str = "starting_fish.txt";
-const NUM_DAYS: u32 = 80;
+const NUM_DAYS: u32 = 256;
 
 // parse the input file to get starting fish count
-fn parse_input(filename: &str) -> Vec<u8> {
+fn parse_input(filename: &str) -> Vec<u64> {
 
     // initialize result
-    let mut result: Vec<u8> = Vec::new();
+    let mut result: Vec<u64> = vec![0;9];
 
     // set up a reader and file object
     let file = File::open(filename).expect("Unable to open file.");
@@ -22,38 +22,39 @@ fn parse_input(filename: &str) -> Vec<u8> {
     // there should only be one line
     let line = reader.lines().next().expect("Unable to read first line.").expect("Same");
     for age in line.split(',') {
-        result.push(age.parse().expect("Got a non-digit input."));
+        let age: usize = age.parse().expect("Got a non-digit input.");
+        result[age] += 1;
     }
 
     return result;
 }
 
 fn main() {
-    // get starting point
-    let mut fishes = parse_input(FILENAME);
+    // get starting point - each index is the number of fish at that age
+    let mut fish_ages = parse_input(FILENAME);
 
     // iterate for desired number of days, incrementing as necessary
     for i in 0..NUM_DAYS {
-        let mut new_fishes: u32 = 0;
-        for fish in fishes.iter_mut() {
-            // handle fish aging
-            if *fish == 0 {
-                *fish = 6;
-                new_fishes += 1;
+        // create next day's ages from existing
+        let mut next_day: Vec<u64> = vec![0;9];
+        for (age, count) in fish_ages.iter().enumerate() {
+            // special handline for index 0 - pregnant fishes
+            if age == 0 {
+                next_day[8] = *count;
+                next_day[6] = *count;
             } else {
-                *fish -= 1;
+                next_day[age - 1] += *count;
             }
         }
 
-        // add new fishes
-        for _ in 0..new_fishes {
-            fishes.push(8);
-        }
+        // update ages
+        fish_ages = next_day;
 
         // print fish, for debugging
-        println!("Day {}", i+1);
-        // println!("Day {}: {:?}", i+1, fishes);
+        // println!("Day {}", i+1);
+        println!("Day {}: {:?}", i+1, fish_ages);
     }
 
-    println!("Final fish count: {}", fishes.len());
+    let count: u64 = fish_ages.iter().sum();
+    println!("Final fish count: {}", count);
 }
