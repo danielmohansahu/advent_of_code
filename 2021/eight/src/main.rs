@@ -2,12 +2,13 @@
 // https://adventofcode.com/2021/day/8
 
 use std::vec::Vec;
+use itertools::Itertools;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-const FILENAME: &str = "one-line.txt";
+// const FILENAME: &str = "one-line.txt";
 // const FILENAME: &str = "example.txt";
-// const FILENAME: &str = "signals.txt";
+const FILENAME: &str = "signals.txt";
 
 // some constants used in Part2
 const CHAR_MAP: [&'static str; 10] = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
@@ -96,14 +97,94 @@ fn sort_known_from_unknown<'a>(knowns: &mut Vec<(&'a String, usize)>, unknowns: 
 
     // sanity checks
     assert_eq!(knowns.len() + unknowns.len(), 10);
+}
 
+fn string_diff(s1: &String, s2: &String) -> String {
+    // initialize result
+    let mut result = String::new();
+
+    for c in s1.chars() {
+        if !s2.contains(c) {
+            result.push(c);
+        }
+    }
+    for c in s2.chars() {
+        if !s1.contains(c) {
+            result.push(c);
+        }
+    }
+    return result;
+}
+
+// use the given known information to extract mapping information
+fn update_mapping(knowns: & Vec<(&String, usize)>, mapping: &mut Vec<(char,char)>) -> bool {
+    // returns true if we have all the characters solved
+    // the mapping represents our knowledge of which characters in our sequence
+    // map to characters in the "correct" sequence
+    
+    // iterate through knowns and compare them to extract unique characters
+    for known in knowns.iter() {
+        // again iterate, only considering those that are 1 larger than us
+        for other_known in knowns.iter() {
+            let diff = string_diff(&known.0, &other_known.0);
+            if diff.chars().count() == 1 {
+                // consider just this char
+                let char_: char = diff.chars().next().expect("This is a char");
+                
+                // check what the corresponding character is for the 'correct' data
+                let correct_diff = string_diff(&CHAR_MAP[known.1].to_string(), &CHAR_MAP[other_known.1].to_string());
+                let correct_char: char = correct_diff.chars().next().expect("This is a char.");
+
+                let mut already_found = false;
+                for kv in mapping.iter() {
+                    if (kv.0 == char_) && (kv.1 == correct_char) {
+                        already_found = true;
+                    }
+                }
+
+                // append if this is new
+                if !already_found {
+                    println!("Found two strings with a diff of 1: {} - {} = {}", known.0, other_known.0, char_);
+                    println!("This corresponds to ({} <-> {})", char_, correct_char);
+                    mapping.push((char_, correct_char));
+                }
+            }
+        }
+    }
+
+    // again go through knowns, this time removing known mappings from them and their corresponding
+    // correct solution
+    for known in knowns.iter() {
+        let mut unmapped_chars = known.0.clone();
+        let mut unmapped_correct_chars = CHAR_MAP[known.1].to_string();
+
+        // filter out values that are already mapped
+        for kv in mapping.iter() {
+            unmapped_chars.retain(|c| { c != kv.0 });
+            unmapped_correct_chars.retain(|c| { c != kv.1 });
+        }
+
+        // println!("After filtering: {} <-> {}", unmapped_chars, unmapped_correct_chars);
+        assert_eq!(unmapped_chars.len(), unmapped_correct_chars.len());
+
+        // we can add this to our mapping!
+        if unmapped_chars.len() == 1 {
+            let char_: char = unmapped_chars.chars().next().expect("This is a char.");
+            let correct_char: char = unmapped_correct_chars.chars().next().expect("This is a char.");
+            mapping.push((char_, correct_char));
+            println!("Found mapping {} <-> {}", char_, correct_char);
+        }
+    }
+
+    return mapping.len() == 7;
 }
 
 // iteratively process the given pattern until all elements are known
-fn iterative_solve(patterns: & Vec<String>) {
+fn iterative_solve(patterns: & Vec<String>) -> Vec<(char,char)> {
     // initialize objects used to track our current understanding
     let mut knowns: Vec<(&String,usize)> = Vec::new();
     let mut unknowns: Vec<(&String,Vec<usize>)> = Vec::new();
+    let mut mapping: Vec<(char,char)> = Vec::new();
 
     // initialize all values as unknown
     for pattern in patterns.iter() {
@@ -120,12 +201,12 @@ fn iterative_solve(patterns: & Vec<String>) {
     let mut last_known_size = 0;
     let mut iteration = 0;
     loop {
-        // break conditions
-        if unknowns.len() == 0 {
+        sort_known_from_unknown(&mut knowns, &mut unknowns);
+
+        if update_mapping(& knowns, &mut mapping) {
+            println!("Found all characters, stopping.");
             break;
         }
-
-        sort_known_from_unknown(&mut knowns, &mut unknowns);
 
         // make sure we made progress
         assert_ne!(knowns.len(), last_known_size);
@@ -136,8 +217,42 @@ fn iterative_solve(patterns: & Vec<String>) {
         println!("\tIter #{}", iteration); 
         println!("\t Known: {:?}", knowns);
         println!("\t Unknown: {:?}", unknowns);
+        println!("\t Mapping: {:?}", mapping);
     }
 
+    return mapping;
+}
+
+fn decode(output: & Vec<String>, mapping: & Vec<(char,char)>) -> u64 {
+    // decode the given output strings (4 digits) via the given mapping
+    
+    let mut result = 0;
+    let ten: u64 = 10;
+    for (i, digit) in output.iter().enumerate() {
+        // use mapping to get the correct sequence here
+        let mut correct: String = String::new();
+        for char_ in digit.chars() {
+            for kv in mapping.iter() {
+                if char_ == kv.0 {
+                    correct.push(kv.1);
+                }
+            }
+        }
+
+        // println!("Converted {} to {}", digit, correct);
+        // find corresponding number now - sorting first for convenience
+        correct = correct.chars().sorted().collect::<String>();
+
+        for (j, val) in CHAR_MAP.iter().enumerate() {
+            if val.to_string() == correct {
+                println!("Found expected digit: {} -> {}", digit, j);
+                result += ten.pow(3 - i as u32) * (j as u64);
+            }
+        }
+    }
+
+    println!("Got {} for {:?}", result, output);
+    return result;
 }
 
 fn main() {
@@ -162,10 +277,14 @@ fn main() {
 
     // part 2 is a lot more complicated - we need to iteratively figure out which wire maps to
     // which segment.
+    let mut result = 0;
     for i in 0..patterns.len() {
         // returns a mapping of wire->segment
-        iterative_solve(&patterns[i]);
+        let mapping = iterative_solve(&patterns[i]);
 
+        // decode output values
+        result += decode(&outputs[i], &mapping);
     }
 
+    println!("Part B: Got {}", result);
 }
