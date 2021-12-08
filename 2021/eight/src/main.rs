@@ -5,7 +5,8 @@ use std::vec::Vec;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-const FILENAME: &str = "example.txt";
+const FILENAME: &str = "one-line.txt";
+// const FILENAME: &str = "example.txt";
 // const FILENAME: &str = "signals.txt";
 
 // some constants used in Part2
@@ -43,10 +44,44 @@ fn parse_input(filename: &str, patterns: &mut Vec<Vec<String>>, outputs: &mut Ve
     }
 }
 
+fn is_substring(string: &String, sub: &String) -> bool {
+    // returns true if the given 'sub' is entirely contained in 'string'
+    for char_ in sub.chars() {
+        if !string.contains(char_) {
+            return false;
+        }
+    }
+    // println!("String {} entirely contains {}", string, sub);
+    return true;
+}
+
 // use known information to determine which unknowns are solveable
 fn sort_known_from_unknown<'a>(knowns: &mut Vec<(&'a String, usize)>, unknowns: &mut Vec<(&'a String, Vec<usize>)>) {
     // use known information to filter unknowns
-    // @TODO!
+    for known in knowns.iter() {
+        // walk through our known values, verifying that the overlap they have
+        // with this unknown cell matches what we would expect from the correct
+        // answers
+        for unknown in unknowns.iter_mut() {
+            let is_sub = is_substring(unknown.0, known.0);
+            
+            // verify that there either is or isn't overlap
+            //  in the 'correct' digits as well
+            let mut to_keep: Vec<usize> = Vec::new();
+            for option in unknown.1.iter() {
+                // println!("Checking option {}", option);
+                let should_be_sub = is_substring(&CHAR_MAP[*option].to_string(), &CHAR_MAP[known.1].to_string());
+                if should_be_sub == is_sub {
+                    to_keep.push(*option);
+                } else {
+                    println!("Dropping {} as an option from {}", option, unknown.0);
+                }
+            }
+
+            // update unknown options
+            unknown.1 = to_keep;
+        }
+    }
 
     // check if we have any known values already (unknowns of len==1)
     for kv in unknowns.iter() {
@@ -62,9 +97,6 @@ fn sort_known_from_unknown<'a>(knowns: &mut Vec<(&'a String, usize)>, unknowns: 
     // sanity checks
     assert_eq!(knowns.len() + unknowns.len(), 10);
 
-    // debug printouts
-    println!("\t Known: {:?}", knowns);
-    println!("\t Unknown: {:?}", unknowns);
 }
 
 // iteratively process the given pattern until all elements are known
@@ -86,6 +118,7 @@ fn iterative_solve(patterns: & Vec<String>) {
 
     // perform initial filtering
     let mut last_known_size = 0;
+    let mut iteration = 0;
     loop {
         // break conditions
         if unknowns.len() == 0 {
@@ -97,13 +130,13 @@ fn iterative_solve(patterns: & Vec<String>) {
         // make sure we made progress
         assert_ne!(knowns.len(), last_known_size);
         last_known_size = knowns.len();
+        iteration += 1;
+
+        // debug printouts
+        println!("\tIter #{}", iteration); 
+        println!("\t Known: {:?}", knowns);
+        println!("\t Unknown: {:?}", unknowns);
     }
-
-    // print results
-    println!("Initial Pattern: {:?}", patterns);
-    println!("\t Known: {:?}", knowns);
-    println!("\t Unknown: {:?}", unknowns);
-
 
 }
 
