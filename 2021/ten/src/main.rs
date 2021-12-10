@@ -139,17 +139,107 @@ fn score_line(line: & Vec<char>) -> Result<u32> {
     return Ok(0);
 }
 
+fn complete_line(line: &Vec<char>) -> Vec<char> {
+    // determine the (correctly ordered) final characters for this incomplete line
+
+    // initialize result
+    let mut result: Vec<char> = Vec::new();
+
+    // loop until the full string is valid
+    while !is_valid(&[&line[..], &result[..]].concat()) {
+        // construct map to track opening / closing values
+        let mut map_count: HashMap<char,i32> = HashMap::new();
+        map_count.insert('(', 0);
+        map_count.insert('[', 0);
+        map_count.insert('{', 0);
+        map_count.insert('<', 0);
+
+        // iterate (backwards) through the full vector looking for the
+        // first unterminated opening character
+        let mut full = line.clone();
+        full.append(&mut result.clone());
+        for i in (0..full.len()).rev() {
+            let char_ = full[i];
+            match char_ {
+                // opening characters
+                '(' => *map_count.get_mut(&'(').unwrap() -= 1,
+                '[' => *map_count.get_mut(&'[').unwrap() -= 1,
+                '{' => *map_count.get_mut(&'{').unwrap() -= 1,
+                '<' => *map_count.get_mut(&'<').unwrap() -= 1,
+                // closing characters
+                ')' => *map_count.get_mut(&'(').unwrap() += 1,
+                ']' => *map_count.get_mut(&'[').unwrap() += 1,
+                '}' => *map_count.get_mut(&'{').unwrap() += 1,
+                '>' => *map_count.get_mut(&'<').unwrap() += 1,
+                // error handling
+                _   => panic!("Unexpected character received: {}", char_)
+            }
+
+            // check if we have any negative values
+            let mut modified = false;
+            for kv in &map_count {
+                if *kv.1 < 0 {
+                    // println!("Found unterminated opening character '{}') in {:?}", char_, line);
+                    result.push(match char_ {
+                        '(' => ')',
+                        '[' => ']',
+                        '{' => '}',
+                        '<' => '>',
+                        _   => panic!("Unexpected character received: {}", char_)
+                    });
+                    modified = true;
+                    break;
+                }
+            }
+            // check if we should break to the outer loop
+            if modified {
+                break;
+            }
+        }
+    }
+
+   
+    return result;
+}
+
+fn score_closing_sequence(sequence: & Vec<char>) -> u64 {
+    // apply known scoring scheme to this sequence
+    let mut score: u64 = 0;
+    for char_ in sequence.iter() {
+        score *= 5;
+        score += match char_ {
+            ')' => 1,
+            ']' => 2,
+            '}' => 3,
+            '>' => 4,
+            _   => panic!("Unexpected closer {}", char_)
+        }
+    };
+    score
+}
+
 fn main() {
     // collect input
     let input = parse_input(FILENAME).expect("Unable to parse input file.");
     
     // collect score
     let mut score: u32 = 0;
+    let mut completion_scores: Vec<u64> = Vec::new();
     for line in input {
+        // get scores of invalid lines (part A)
         let sub_score = score_line(&line).expect("Unable to score line.");
-        // println!("{:?} -> {}", line, sub_score);
         score += sub_score;
+
+        // if this is just an incomplete line, complete it for part B
+        if sub_score == 0 {
+            completion_scores.push(score_closing_sequence(&complete_line(&line)));
+        }
     }
 
     println!("Part A Syntax Score: {}", score);
+
+    // sort Part B to get median score
+    completion_scores.sort();
+    println!("Part B Median Score: {}", completion_scores[completion_scores.len()/2]);
+    
 }
