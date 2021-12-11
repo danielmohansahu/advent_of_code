@@ -89,12 +89,29 @@ fn main() {
         current.push(row);
     }
 
+    // calculate grid size
+    let grid_size = current.len() * current[0].len();
+
     // println!("Got initial energies: {:?}", current);
     let mut flash_count = 0;
-    for i in 0..100 {
-        flash_count += step(&mut current);
-        println!("Processing step {}: \n{:?}", i + 1, current);
+    let mut i = 0;
+    loop {
+        i += 1;
+        // println!("Processing step {}: \n{:?}", i + 1, current);
+
+        let step_count = step(&mut current);
+        flash_count += step_count;
+
+        // check for part A solution
+        if i == 100 {
+            println!("Part A: Got a flash count of {}", flash_count);
+        }
+
+        // check for part B solution and stop condition
+        if step_count == grid_size as u32 {
+            println!("Part B: Got a synchronized flash at step {}", i);
+            break;
+        }
     }
-    println!("Part A: Got a flash count of {}", flash_count);
 
 }
