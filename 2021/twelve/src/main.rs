@@ -11,6 +11,31 @@ struct Node {
     connections: Vec<String>,
 }
 
+fn get_max_count(path: &Vec<String>) -> u32 {
+    // return the maximum count of any element in the given vector
+    // possibly the least efficient implementation of this possible?
+    let mut tmp: HashMap<String,u32> = HashMap::new();
+    for node in path {
+        // only check nodes that are small
+        if node == "start" || !node.chars().all(|c| c.is_ascii_lowercase()) {
+            continue;
+        }
+        *tmp.entry(node.to_string()).or_insert(0) += 1;
+    }
+
+    // return the highest value
+    let mut highest = 0;
+    for kv in &tmp {
+        if kv.1 > &highest {
+            highest = *kv.1;
+        }
+    }
+
+    // println!("{:?} : {:?}", path, tmp);
+
+    return highest;
+}
+
 fn main() {
     // parse input into a dict of nodes
     let mut nodes: HashMap<String,Node> = HashMap::new();
@@ -50,9 +75,34 @@ fn main() {
         for path in &current_paths {
             // get the last node's connections
             for node in &nodes[path.last().unwrap()].connections {
-                // skip if this node is small and we've already seen it
-                if nodes[node].small && path.contains(node) {
+
+                // Code for Part A:
+                // // skip if this node is small and we've already seen it
+                // if nodes[node].small && path.contains(node) {
+                //     continue;
+                // }
+                
+                // Code for Part B:
+                // skip if this node is small and has been visited more than
+                // twice
+                if node == "start" {
                     continue;
+                } else if nodes[node].small {
+                    // check if the number of instances of this node are > 1
+                    let count = path.iter().filter(|&e| *e == *node).count();
+                    if count > 1 {
+                        // already have 2, can't add more
+                        continue;
+                    } else if count == 1 {
+                        // here's the tricky part - we can add this one _only_
+                        // if there are no other nodes with 2 visits in this path
+                        if get_max_count(&path) == 2 {
+                            continue;
+                        }
+                        // println!("{:?} has 1 instance of {} and no others with 2 - adding it.", path, node);
+                        // otherwise we can add this duplicate visit
+                    }
+                    // if count == 0 we're fine to go down to the next instruction and add it
                 }
 
                 // construct a full path with this node appended
