@@ -140,6 +140,23 @@ fn count(grid: &Vec<Vec<bool>>) -> u32 {
     count
 }
 
+fn print_grid(grid: &Vec<Vec<bool>>) {
+    // prett(ier) printing of grid, with '#' marking nonzero elements and '.' for 0.
+    for j in 0..grid[0].len() {
+        // row as a string
+        let mut row: String = String::new();
+        for i in 0..grid.len() {
+            if grid[i][j] {
+                row.push('#');
+            } else {
+                row.push('.');
+            }
+        }
+        println!("{:?}", row);
+    }
+    
+}
+
 fn main() {
     // parse input
     let (markings, folds) = parse_input(FILENAME).unwrap();
@@ -158,9 +175,8 @@ fn main() {
             _   => panic!("Unexpected fold direction!")
         };
     }
-    // println!("Final count: {} \n{:?}", count(&current), current);
-    
-    
+    println!("Final count: {}", count(&current));
+    print_grid(&current);
 }
 
 
