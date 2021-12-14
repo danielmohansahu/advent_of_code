@@ -10,10 +10,12 @@ use anyhow::Result;
 const FILENAME: &str = "rules.txt";
 
 // parse the input file to get the starting paper and fold instructions
-fn parse_input(filename: &str) -> Result<(String,HashMap<String,char>)> {
+fn parse_input(filename: &str) -> Result<(HashMap<String,u64>,HashMap<char,u64>,HashMap<String,char>)> {
 
     // initialize outputs
     let mut rules: HashMap<String,char> = HashMap::new();
+    let mut pair_counter: HashMap<String,u64> = HashMap::new();
+    let mut char_counter: HashMap<char,u64> = HashMap::new();
     let mut string: String = String::new();
 
     // set up a reader and file object
@@ -40,52 +42,63 @@ fn parse_input(filename: &str) -> Result<(String,HashMap<String,char>)> {
         rules.insert(key.to_string(),val);
     }
 
-    Ok((string.to_string(),rules))
-}
-
-fn polymerize(polymer: &String, rules: &HashMap<String,char>) -> String{
-    // initialize result
-    let mut result: String = String::new();
-
-    // iterate through the existing string, adding new rules to the new one
+    // get initial count of pairs
     let mut last: char = ' ';
-    #[allow(unused_assignments)]
-    let mut key: String = String::new();
-    for (i,char_) in polymer.chars().enumerate() {
+    for (i,char_) in string.chars().enumerate() {
         if i != 0 {
-            // create string and find rules
-            key = last.to_string();
-            key.push(char_);
-
-            // append this string to our result
-            result.push(rules[&key]);
-            result.push(char_);
-            // println!("\t{:?}",result);
-        } else {
-            result.push(char_);
+            let mut tmp = last.to_string();
+            tmp.push(char_);
+            *pair_counter.entry(tmp).or_insert(0) += 1;
         }
-
-        // update last element
         last = char_;
+        *char_counter.entry(char_).or_insert(0) += 1;
     }
 
-    return result;
+    Ok((pair_counter,char_counter,rules))
 }
 
-fn count(polymer: &String) -> u32 {
-    // returns the difference between most and least element occurence
-    let mut counter: HashMap<char,u32> = HashMap::new();
-    for char_ in polymer.chars() {
-        *counter.entry(char_).or_insert(0) += 1;
-    }
+fn polymerize(pairs: &mut HashMap<String,u64>, counter: &mut HashMap<char,u64>, rules: &HashMap<String,char>) {
+    // create local copy of pairs for iteration
+    let pair_init = pairs.clone();
 
-    let (mut least, mut most): (u32, u32) = (u32::MAX, 0);
+    // iterate through the existing string, updating pairs and counter
+    let mut last: char = ' ';
+    for (i,kv) in pair_init.iter().enumerate() {
+        let key = kv.0;
+        let count = kv.1;
+        let c1 = key.chars().next().unwrap();
+        let c2 = key.chars().last().unwrap();
+
+        // create string and find rules
+        let val = rules[key];
+        // println!("Found key -> val {:?} -> {}", key,val);
+
+        // append the two resulting strings to our map
+        let (mut s1, mut s2): (String,String) = (c1.to_string(), val.to_string());
+        s1.push(val);
+        s2.push(c2);
+        // println!("Made new pairs: {:?},{:?}", s1, s2);
+
+        // update our counts
+        *pairs.entry(s1).or_insert(0) += count;
+        *pairs.entry(s2).or_insert(0) += count;
+        // this or insert here is silly, but it will cause a panic if undefined (which is good)
+        *pairs.entry(key.to_string()).or_insert(0) -= count;
+
+        // also count how many times we've seen this char
+        *counter.entry(val).or_insert(0) += count;
+    }
+}
+
+fn count(counter: &HashMap<char,u64>) -> u64 {
+    // returns the difference between most and least element occurence
+    let (mut least, mut most): (u64, u64) = (u64::MAX, 0);
     for kv in counter {
-        if kv.1 > most {
-            most = kv.1;
+        if *kv.1 > most {
+            most = *kv.1;
         }
-        if kv.1 < least {
-            least = kv.1;
+        if *kv.1 < least {
+            least = *kv.1;
         }
     }
 
@@ -94,17 +107,22 @@ fn count(polymer: &String) -> u32 {
 
 fn main() {
     // parse input into starting string and rules
-    let (mut current, rules) = parse_input(FILENAME).unwrap();
+    let (mut pairs, mut counter, rules) = parse_input(FILENAME).unwrap();
 
     // iteratively apply rules
-    println!("Polymer at step {}: {:?}", 0, current);
-    for i in 0..10 {
-        current = polymerize(&current, &rules);
-        // println!("Polymer at step {}: {:?}", i + 1, current);
+    println!("Step {}: {:?}", 0, pairs);
+    for i in 0..40 {
+        polymerize(&mut pairs, &mut counter, &rules);
+
+        if i == 9 {
+            // count for part A
+            println!("Part A: Found a count difference of {}", count(&counter));
+        }
+        // println!("Step {}: {:?}", i + 1, pairs);
+        println!("Step {}", i + 1);
     }
 
-    // count for part A
-    println!("Part A: Found a count difference of {}", count(&current));
+    println!("Part B: Found a count difference of {}", count(&counter));
     
     
 }
