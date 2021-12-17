@@ -78,6 +78,9 @@ fn main() {
     // initialize loop variables for Part A
     let mut max_height: i64 = i64::MIN;
     let mut max_height_xy: (i64,i64) = (0,0);
+    
+    // initialize variables for Part B
+    let mut successes = 0;
 
     // for part A, probe all possible starting velocities
     for dx in 1..XMAX+1 {
@@ -90,12 +93,16 @@ fn main() {
                 max_height = local_maxima;
                 max_height_xy = (dx, dy);
                 println!("Found new max height {} from ({},{})", max_height, dx, dy);
-
+            }
+            // also track success count for part B
+            if local_maxima != i64::MIN {
+                successes += 1;
             }
         }
     }
 
     println!("Part A: Found max height {} for starting velocities {:?}", max_height, max_height_xy);
+    println!("Part B: Found {} successful velocities.", successes);
 }
 
 
