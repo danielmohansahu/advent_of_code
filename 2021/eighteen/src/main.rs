@@ -159,7 +159,7 @@ fn explode(pair: &mut Either<u32,Box<RecursivePair>>, level: u8, done: &mut bool
         assert!(number.right.is_left());
         let res = (*number.left.as_ref().left().unwrap(), *number.right.as_ref().left().unwrap());
 
-        println!("\texploding {:?}", to_string(&number));
+        // println!("\texploding {:?}", to_string(&number));
         // set our value to 0
         *pair = Left(0);
         *done = true;
@@ -237,7 +237,7 @@ fn split(number: &mut RecursivePair, done: &mut bool) {
             let val_l = if val % 2 == 1 { (val - 1) / 2 } else { val / 2 };
             let val_r = if val % 2 == 1 { (val + 1) / 2 } else { val / 2 };
             assert_eq!(val_l + val_r, *val);
-            println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
+            // println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
             number.left = Right(Box::new(RecursivePair{left: Left(val_l), right: Left(val_r)}));
             *done = true;
             return;
@@ -258,7 +258,7 @@ fn split(number: &mut RecursivePair, done: &mut bool) {
             let val_l = if val % 2 == 1 { (val - 1) / 2 } else { val / 2 };
             let val_r = if val % 2 == 1 { (val + 1) / 2 } else { val / 2 };
             assert_eq!(val_l + val_r, *val);
-            println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
+            // println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
             number.right = Right(Box::new(RecursivePair{left: Left(val_l), right: Left(val_r)}));
             *done = true;
             return;
@@ -274,7 +274,7 @@ fn reduce(mut sum: RecursivePair) -> RecursivePair {
     // our string representation, used for tracking when we finish
     let mut repr = to_string(&sum);
 
-    println!("  reducing {:?}", repr);
+    // println!("  reducing {:?}", repr);
 
     // convenience variable used to track when to reset
     let mut done = false;
@@ -287,13 +287,13 @@ fn reduce(mut sum: RecursivePair) -> RecursivePair {
         explode(&mut tmp, 0, &mut done);
         sum = *tmp.right().unwrap();
         if done {
-            println!("    after explode: \n\t{:?}", to_string(&sum));
+            // println!("    after explode: \n\t{:?}", to_string(&sum));
             continue;
         }
 
         // then try to split
         split(&mut sum, &mut done);
-        println!("    after split: \n\t{:?}", to_string(&sum));
+        // println!("    after split: \n\t{:?}", to_string(&sum));
 
         // check if we didn't do anything, in which case we should stop
         let new_repr = to_string(&sum);
@@ -331,6 +331,7 @@ fn magnitude(number: &RecursivePair) -> u32 {
 fn main() {
     // parse input
     let numbers = parse_input(INPUT).unwrap();
+    let length = numbers.len();
 
     // add numbers to get a result
     println!("First number: \n\t{:?}", to_string(&numbers[0]));
@@ -354,6 +355,25 @@ fn main() {
     }
     let mag = magnitude(&sum);
     println!("Part A: Resulting sum has a magnitude of {}", mag);
+
+    // part B - check each permutation of possible additions
+    let mut max_magnitude = 0;
+
+    // brute force search. I know there are repeats. I know it's bad. I'm tired.
+    for i in 0..length {
+        for j in 0..length {
+            if i != j {
+                let n1 = parse_input(INPUT).unwrap().remove(i);
+                let n2 = parse_input(INPUT).unwrap().remove(j);
+                let mag = magnitude(&reduce(add(n1, n2)));
+                if mag > max_magnitude {
+                    max_magnitude = mag;
+                }
+            }
+        }
+    }
+    println!("Part B: Resulting maximum magnitude {}", max_magnitude);
+
 }
 
 
