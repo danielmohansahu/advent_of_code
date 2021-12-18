@@ -43,6 +43,32 @@ fn parse_input(filename: &str) -> Result<Vec<Vec<Node>>> {
     Ok(grid)
 }
 
+fn grow_grid(grid: &Vec<Vec<Node>>) -> Vec<Vec<Node>> {
+    // make this grid FIVE TIMES BIGGER
+    let mut new_grid: Vec<Vec<Node>> = Vec::new();
+    let factor = 5;
+    let dim = (grid.len(), grid[0].len());
+    let new_dim = (factor * dim.0, factor * dim.1);
+
+    for i in 0..new_dim.0 {
+        // initialize row
+        let mut row: Vec<Node> = Vec::new();
+        for j in 0..new_dim.1 {
+            // get the corresponding element in the original grid
+            let (x,y) = (i % dim.0, j % dim.1);
+            let offset = (i / dim.0) + (j / dim.1);
+            // println!("Setting {:?} from {:?} with offset {}", (i,j), (x,y), offset);
+            let mut risk = grid[x][y].risk + offset as u32;
+            if risk > 9 {
+                risk -= 9;
+            }
+            row.push(Node{risk: risk, dist: u32::MAX});
+        }
+        new_grid.push(row);
+    }
+    return new_grid;
+}
+
 // get vector of tuple (neighbors)
 fn get_neighbors(current: &(usize,usize), dim: &(usize,usize)) -> Vec<(usize,usize)> {
     // initialize variables
@@ -115,6 +141,11 @@ fn djikstra(grid: &mut Vec<Vec<Node>>) -> u32 {
                 current = *k;
             }
         }
+
+        // periodically let folks know how many are left
+        if unvisited.len() % 10000 == 0 {
+            println!("  {} nodes remaining.", unvisited.len());
+        }
     }
 
     // return distance of final node
@@ -125,8 +156,8 @@ fn print_costs(grid: &Vec<Vec<Node>>) {
     for i in 0..grid.len() {
         let mut string = String::new();
         for j in 0..grid[i].len() {
-            let mut repr = grid[i][j].dist.to_string();
-            for k in 0..(4-repr.chars().count()) {
+            let mut repr = grid[i][j].risk.to_string();
+            for _ in 0..(2-repr.chars().count()) {
                 repr.push(' ');
             }
             string.push_str(&repr);
@@ -141,7 +172,14 @@ fn main() {
 
     // run djikstra's algorithm
     let risk = djikstra(&mut grid);
-    print_costs(&grid);
+    // print_costs(&grid);
     println!("Part A: Got path with risk {}", risk);
 
+    // what is this, a grid for ants??!
+    let mut big_grid = grow_grid(&grid);
+    println!("Made big grid.");
+    // print_costs(&big_grid);
+
+    let big_risk = djikstra(&mut big_grid);
+    println!("Part B: Got path with risk {}", big_risk);
 }
