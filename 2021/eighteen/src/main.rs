@@ -11,9 +11,9 @@ use anyhow::Result;
 // static INPUT: &str = "simple_example2.txt";
 // static INPUT: &str = "simple_example3.txt";
 // static INPUT: &str = "simple_example4.txt";
-static INPUT: &str = "example1.txt";
+// static INPUT: &str = "example1.txt";
 // static INPUT: &str = "example2.txt";
-// static INPUT: &str = "homework.txt";
+static INPUT: &str = "homework.txt";
 
 // struct that can store itself or a regular number as a pair
 struct RecursivePair {
@@ -157,8 +157,9 @@ fn explode(pair: &mut Either<u32,Box<RecursivePair>>, level: u8, done: &mut bool
         // sanity check that our children are regular values
         assert!(number.left.is_left());
         assert!(number.right.is_left());
-
         let res = (*number.left.as_ref().left().unwrap(), *number.right.as_ref().left().unwrap());
+
+        println!("\texploding {:?}", to_string(&number));
         // set our value to 0
         *pair = Left(0);
         *done = true;
@@ -185,7 +186,7 @@ fn explode(pair: &mut Either<u32,Box<RecursivePair>>, level: u8, done: &mut bool
         } else {
             // add the left rval to the left child
             let (l,r) = rvals.unwrap();
-            add_to_first_right(&mut number.left, r);
+            add_to_first_right(&mut number.left, l);
             return Some((0,r));
         }
     } else {
@@ -207,9 +208,9 @@ fn explode(pair: &mut Either<u32,Box<RecursivePair>>, level: u8, done: &mut bool
                 panic!("Unexpected situation.");
             } else if l != 0 {
                 // our right child is passing a left upwards - pass it to our left
-                println!("Before add to first right:\n{:?}", to_string(&number));
+                // println!("Before add to first right:\n{:?}", to_string(&number));
                 add_to_first_right(&mut number.left, l);
-                println!("After add to first right:\n{:?}", to_string(&number));
+                // println!("After add to first right:\n{:?}", to_string(&number));
             } else {
                 // our right child is passing a right upwards - keep it going
                 return Some((0,r));
@@ -235,6 +236,8 @@ fn split(number: &mut RecursivePair, done: &mut bool) {
         if val > &9 {
             let val_l = if val % 2 == 1 { (val - 1) / 2 } else { val / 2 };
             let val_r = if val % 2 == 1 { (val + 1) / 2 } else { val / 2 };
+            assert_eq!(val_l + val_r, *val);
+            println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
             number.left = Right(Box::new(RecursivePair{left: Left(val_l), right: Left(val_r)}));
             *done = true;
             return;
@@ -243,6 +246,10 @@ fn split(number: &mut RecursivePair, done: &mut bool) {
         // recurse
         split(&mut number.left.as_mut().right().unwrap(), done);
     }
+    
+    if *done {
+        return;
+    }
 
     // check right
     if number.right.is_left() {
@@ -250,6 +257,8 @@ fn split(number: &mut RecursivePair, done: &mut bool) {
         if val > &9 {
             let val_l = if val % 2 == 1 { (val - 1) / 2 } else { val / 2 };
             let val_r = if val % 2 == 1 { (val + 1) / 2 } else { val / 2 };
+            assert_eq!(val_l + val_r, *val);
+            println!("\tsplitting {} in {:?} into ({},{})", val, to_string(&number), val_l, val_r);
             number.right = Right(Box::new(RecursivePair{left: Left(val_l), right: Left(val_r)}));
             *done = true;
             return;
@@ -277,7 +286,10 @@ fn reduce(mut sum: RecursivePair) -> RecursivePair {
         let mut tmp: Either<u32,Box<RecursivePair>> = Right(Box::new(sum));
         explode(&mut tmp, 0, &mut done);
         sum = *tmp.right().unwrap();
-        println!("    after explode: \n\t{:?}", to_string(&sum));
+        if done {
+            println!("    after explode: \n\t{:?}", to_string(&sum));
+            continue;
+        }
 
         // then try to split
         split(&mut sum, &mut done);
@@ -339,7 +351,6 @@ fn main() {
         sum = reduce(sum);
         
         println!("After adding and reducing #{}: \n\t{:?}", count, to_string(&sum));
-        break;
     }
     let mag = magnitude(&sum);
     println!("Part A: Resulting sum has a magnitude of {}", mag);
