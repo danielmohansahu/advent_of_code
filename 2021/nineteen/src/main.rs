@@ -112,7 +112,7 @@ fn get_match_count(src: &Vec<Point>, tgt: &Vec<Point>) -> u32 {
     let mut matches = 0;
     for i in 0..src.len() {
         for j in 0..tgt.len() {
-            if (tgt[j].x == src[i].x) && (tgt[j].y == src[i].y) && (tgt[j].z == src[i].z) {
+            if tgt[j] == src[i] {
                 matches += 1;
             }
         }
@@ -142,15 +142,17 @@ fn icp(src: &Vec<Point>, tgt: &Vec<Point>) -> Option<(Point,Point)> {
                             z: point.z - c.z};
 
                         // get a local copy of candidate, transformed to match the first point of src
-                        let candidate = translate(&candidate, &transform);
+                        let potential = translate(&candidate, &transform);
+                        assert_eq!(translate(&rotate(tgt, &rpy),&transform), potential);
 
                         // check for success
-                        let matches = get_match_count(src, &candidate);
+                        let matches = get_match_count(src, &potential);
 
                         // sanity check we got at least 1 (the one we translated to!)
                         assert!(matches > 0);
 
                         if matches >= 12 {
+                            // println!("Found 12 matches.");
                             return Some((rpy,transform));
                         }
                     }
@@ -165,9 +167,6 @@ fn icp(src: &Vec<Point>, tgt: &Vec<Point>) -> Option<(Point,Point)> {
 fn transform_to_zero(transforms: &HashMap<usize,Vec<(Point,Point)>>, points: &Vec<Point>, src: usize) -> Vec<Point> {
     // Transform the given cloud from src frame into 0 frame
 
-    // otherwise check if this transform exists
-    //  (we know we want to get to 0 - this wouldn't work for arbitrary transforms)
-    println!("  transforming points from {} into {}", src, 0);
     assert!(transforms.contains_key(&src));
     let mut result = points.clone();
     for tf in &transforms[&src] {
@@ -210,11 +209,7 @@ fn flatten_transforms(size: usize, transforms: &HashMap<(usize,usize),(Point,Poi
                 for (key,val) in transforms.iter() {
                     let (f1,f2) = key;
                     // check if this requires just one more hop
-                    if *f1 == i && result.contains_key(f2) {
-                        let mut chain = vec![*val];
-                        chain.append(&mut result[f2].clone());
-                        result.insert(i, chain);
-                    } else if *f2 == i  && result.contains_key(f1) {
+                    if *f2 == i && result.contains_key(f1) {
                         let mut chain = vec![*val];
                         chain.append(&mut result[f1].clone());
                         result.insert(i, chain);
@@ -238,7 +233,11 @@ fn main() {
     // transforms in a map
     let mut transforms: HashMap<(usize,usize),(Point,Point)> = HashMap::new();
     for i in 0..scanners.len() {
-        for j in (i+1)..scanners.len() {
+        for j in 0..scanners.len() {
+            // skip 1 to 1 mapping
+            if i == j {
+                continue;
+            }
             // println!("  comparing {} to {}", i, j);
             let transform = icp(&scanners[i], &scanners[j]);
             if transform.is_some() {
@@ -253,7 +252,7 @@ fn main() {
     let transforms_to_zero = flatten_transforms(scanners.len(), &transforms);
 
     println!("Found the following transforms:");
-    for (tgt, tf) in &transforms_to_zero {
+    for (tgt, _) in &transforms_to_zero {
         println!("\t{}->0: {}", tgt, transform_to_zero(&transforms_to_zero, &vec![Point{x:0,y:0,z:0}], *tgt)[0]);
     }
 
@@ -261,10 +260,10 @@ fn main() {
     let mut cloud = Vec::new();
     for i in 0..scanners.len() {
         let mut subcloud = transform_to_zero(&transforms_to_zero, &scanners[i], i);
-        println!("Scanner {}:", i);
-        for pt in &subcloud {
-            println!("\t{}", pt);
-        }
+        // println!("Scanner {}:", i);
+        // for pt in &subcloud {
+        //     println!("\t{}", pt);
+        // }
         cloud.append(&mut subcloud);
     }
 
