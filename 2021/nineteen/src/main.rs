@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash)]
 struct Point {
     x: i32,
     y: i32,
@@ -28,9 +28,17 @@ struct Point {
 // display for my point, for convenience
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {}, {})", self.x, self.y, self.z)
+        write!(f, "({},{},{})", self.x, self.y, self.z)
     }
 }
+
+// equality comparison for point
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+impl Eq for Point {}
 
 fn parse_input(filename: &str) -> Result<Vec<Vec<Point>>> {
     // extract input into a vector of scanner points
@@ -99,6 +107,19 @@ fn translate(points: &Vec<Point>, xyz: &Point) -> Vec<Point> {
     return new;
 }
 
+fn get_match_count(src: &Vec<Point>, tgt: &Vec<Point>) -> u32 {
+    // return the number of points that match
+    let mut matches = 0;
+    for i in 0..src.len() {
+        for j in 0..tgt.len() {
+            if (tgt[j].x == src[i].x) && (tgt[j].y == src[i].y) && (tgt[j].z == src[i].z) {
+                matches += 1;
+            }
+        }
+    }
+    return matches;
+}
+
 fn icp(src: &Vec<Point>, tgt: &Vec<Point>) -> Option<(Point,Point)> {
     // perform ICP (not really?) between src and tgt, optionally
     // returning a tuple representing the transformation (RPY,XYZ)
@@ -113,34 +134,100 @@ fn icp(src: &Vec<Point>, tgt: &Vec<Point>) -> Option<(Point,Point)> {
 
                 // iterate through points in src, attempting to match with transformation
                 for point in src.iter() {
-                    let transform = Point{
-                        x: point.x - candidate[0].x,
-                        y: point.y - candidate[0].y,
-                        z: point.z - candidate[0].z};
-                    // get a local copy of candidate, transformed to match the first point of src
-                    let candidate = translate(&candidate, &transform);
+                    for c in candidate.iter() {
+                        // get the translation between these two points
+                        let transform = Point{
+                            x: point.x - c.x,
+                            y: point.y - c.y,
+                            z: point.z - c.z};
 
-                    // check for success - we need at least 12 matches
-                    let mut matches = 0;
-                    for i in 0..src.len() {
-                        for pt in &candidate {
-                            if (pt.x == src[i].x) && (pt.y == src[i].y) && (pt.z == src[i].z) {
-                                matches += 1;
-                                if matches == 12 {
-                                    println!("Found 12 good matches!");
-                                    return Some((rpy,transform));
-                                }
-                            }
+                        // get a local copy of candidate, transformed to match the first point of src
+                        let candidate = translate(&candidate, &transform);
+
+                        // check for success
+                        let matches = get_match_count(src, &candidate);
+
+                        // sanity check we got at least 1 (the one we translated to!)
+                        assert!(matches > 0);
+
+                        if matches >= 12 {
+                            return Some((rpy,transform));
                         }
                     }
-                    // sanity check we got at least 1 (the one we translated to!)
-                    assert!(matches > 0);
                 }
             }
         }
     }
     // if we get this far, we failed. sad
     None
+}
+
+fn transform_to_zero(transforms: &HashMap<usize,Vec<(Point,Point)>>, points: &Vec<Point>, src: usize) -> Vec<Point> {
+    // Transform the given cloud from src frame into 0 frame
+
+    // otherwise check if this transform exists
+    //  (we know we want to get to 0 - this wouldn't work for arbitrary transforms)
+    println!("  transforming points from {} into {}", src, 0);
+    assert!(transforms.contains_key(&src));
+    let mut result = points.clone();
+    for tf in &transforms[&src] {
+        let (rpy, xyz) = tf;
+        result = translate(&rotate(&result, &rpy), &xyz);
+    }
+    return result;
+}
+
+fn flatten_transforms(size: usize, transforms: &HashMap<(usize,usize),(Point,Point)>) -> HashMap<usize,Vec<(Point,Point)>> {
+    // convert the given map of pairs -> transforms and flatten into one
+    // that returns the world coordinate transform for each element
+
+    let mut result: HashMap<usize,Vec<(Point,Point)>> = HashMap::new();
+
+    // iteratively build out the map
+    loop {
+        // check stop condition
+        if (0..size).all(|x| result.contains_key(&x)) {
+            break;
+        }
+        // iterate through all frames
+        for i in 0..size {
+            // skip if we already have this one
+            if result.contains_key(&i) {
+                continue;
+            }
+
+            // otherwise try to add this frame to our list
+            let key = (0,i);
+            if i == 0 {
+                // null operation
+                result.insert(i, vec![(Point{x:0,y:0,z:0},Point{x:0,y:0,z:0})]);
+            } else if transforms.contains_key(&key) {
+                // use this key directly
+                result.insert(i, vec![transforms[&key]]);
+            } else {
+                // we need to chain transforms :/
+                // check all transforms that mention us
+                for (key,val) in transforms.iter() {
+                    let (f1,f2) = key;
+                    // check if this requires just one more hop
+                    if *f1 == i && result.contains_key(f2) {
+                        let mut chain = vec![*val];
+                        chain.append(&mut result[f2].clone());
+                        result.insert(i, chain);
+                    } else if *f2 == i  && result.contains_key(f1) {
+                        let mut chain = vec![*val];
+                        chain.append(&mut result[f1].clone());
+                        result.insert(i, chain);
+                    } else {
+                        // this doesn't concern us.
+                        continue;
+                    }
+                }
+                // we couldn't resolve our transform. continue to the next loop
+            }
+        }
+    }
+    return result;
 }
 
 fn main() {
@@ -152,13 +239,51 @@ fn main() {
     let mut transforms: HashMap<(usize,usize),(Point,Point)> = HashMap::new();
     for i in 0..scanners.len() {
         for j in (i+1)..scanners.len() {
-            println!("Comparing {} to {}", i, j);
+            // println!("  comparing {} to {}", i, j);
             let transform = icp(&scanners[i], &scanners[j]);
             if transform.is_some() {
                 let transform = transform.unwrap();
-                println!("Found transform from {}->{}: ({},{})", i, j, transform.0, transform.1);
+                println!("  found transform from {}->{}: ({},{})", i, j, transform.0, transform.1);
                 transforms.insert((i,j),transform);
             }
         }
     }
+
+    // construct a new transform set from 0<-ALL
+    let transforms_to_zero = flatten_transforms(scanners.len(), &transforms);
+
+    println!("Found the following transforms:");
+    for (tgt, tf) in &transforms_to_zero {
+        println!("\t{}->0: {}", tgt, transform_to_zero(&transforms_to_zero, &vec![Point{x:0,y:0,z:0}], *tgt)[0]);
+    }
+
+    // convert all points into a monolithic cloud
+    let mut cloud = Vec::new();
+    for i in 0..scanners.len() {
+        let mut subcloud = transform_to_zero(&transforms_to_zero, &scanners[i], i);
+        println!("Scanner {}:", i);
+        for pt in &subcloud {
+            println!("\t{}", pt);
+        }
+        cloud.append(&mut subcloud);
+    }
+
+    // count elements in cloud
+    let mut counter: HashMap<Point, u64> = HashMap::new();
+    for point in &cloud {
+        *counter.entry(*point).or_insert(0) += 1;
+    }
+    println!("Part A: Found {} unique points out of {}.", counter.len(), cloud.len());
+
+
 }
+
+
+
+
+
+
+
+
+
+
