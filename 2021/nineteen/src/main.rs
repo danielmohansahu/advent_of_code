@@ -252,8 +252,11 @@ fn main() {
     let transforms_to_zero = flatten_transforms(scanners.len(), &transforms);
 
     println!("Found the following transforms:");
+    let mut scanner_frames: Vec<Point> = Vec::new();
     for (tgt, _) in &transforms_to_zero {
-        println!("\t{}->0: {}", tgt, transform_to_zero(&transforms_to_zero, &vec![Point{x:0,y:0,z:0}], *tgt)[0]);
+        let origin = transform_to_zero(&transforms_to_zero, &vec![Point{x:0,y:0,z:0}], *tgt)[0];
+        println!("\t{}->0: {}", tgt, origin);
+        scanner_frames.push(origin);
     }
 
     // convert all points into a monolithic cloud
@@ -276,9 +279,10 @@ fn main() {
 
     // for Part B we just need to find the maximum distance (manhattan) between scanners
     let mut max_dist = 0;
-    for i in 0..cloud.len() {
-        for j in i..cloud.len() {
-            let dist = (cloud[i].x - cloud[j].x).abs() + (cloud[i].y - cloud[j].y).abs() + (cloud[i].z - cloud[j].z).abs();
+    for i in 0..scanner_frames.len() {
+        for j in i..scanner_frames.len() {
+            let (o1, o2) = (scanner_frames[i], scanner_frames[j]);
+            let dist = (o1.x - o2.x).abs() + (o1.y - o2.y).abs() + (o1.z - o2.z).abs();
             if dist > max_dist {
                 max_dist = dist;
             }
