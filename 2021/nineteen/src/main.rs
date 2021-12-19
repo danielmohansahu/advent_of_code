@@ -8,8 +8,8 @@
 //  3) If 12 matches, that rotation / translation represents the 
 //      coordinate transform from 2->1
 
-static FILENAME: &str = "example.txt";
-// static FILENAME: &str = "readings.txt";
+// static FILENAME: &str = "example.txt";
+static FILENAME: &str = "readings.txt";
 
 use std::fmt;
 use std::vec::Vec;
@@ -274,15 +274,16 @@ fn main() {
     }
     println!("Part A: Found {} unique points out of {}.", counter.len(), cloud.len());
 
-
+    // for Part B we just need to find the maximum distance (manhattan) between scanners
+    let mut max_dist = 0;
+    for i in 0..cloud.len() {
+        for j in i..cloud.len() {
+            let dist = (cloud[i].x - cloud[j].x).abs() + (cloud[i].y - cloud[j].y).abs() + (cloud[i].z - cloud[j].z).abs();
+            if dist > max_dist {
+                max_dist = dist;
+            }
+        }
+    }
+    println!("Part B: Found maximum manhattan distance between scanners: {}", max_dist);
 }
-
-
-
-
-
-
-
-
-
 
