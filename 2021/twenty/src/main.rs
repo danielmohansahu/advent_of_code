@@ -144,15 +144,18 @@ fn main() {
     print_image(&image, "Starting Image:".to_string());
 
     // enhance multiple times for Part A 
-    for i in 0..2 {
+    for i in 0..50 {
         let pad_char = if i % 2 == 1 { map[&0] } else { map[&(map.len() - 1)] };
         // let pad_char = '.';
         image = enhance(&image, &map, pad_char);
 
-        print_image(&image, format!("Iteration #{}", (i+1)));
+        // print_image(&image, format!("Iteration #{}", (i+1)));
         // println!("Enhancing #{} with {}", i+1, pad_char);
+        if i == 1 {
+            println!("Part A: total lit after 2 iterations: {}", count(&image));
+        }
     }
-    println!("Part A: total lit after 2 iterations: {}", count(&image));
+    println!("Part B: total lit after 50 iterations: {}", count(&image));
 }
 
 
