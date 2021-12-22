@@ -1,6 +1,7 @@
 // Rebooting Reactors
 // https://adventofcode.com/2021/day/22
 
+use std::cmp;
 use std::vec::Vec;
 use std::ops::Range;
 use anyhow::Result;
@@ -74,9 +75,16 @@ fn parse_input(filename: &str) -> Result<Vec<Step>> {
 fn process_step(cube: &mut Vec<Vec<Vec<bool>>>, step: &Step, xstep: i64, ystep: i64, zstep: i64) {
     // perform the operations in 'step' on the given Cube
 
-    for x in step.xrange.clone() {
-        for y in step.yrange.clone() {
-            for z in step.zrange.clone() {
+    // narrow range to only contain the subset which overlaps
+    let xrange = cmp::max(step.xrange.start, -xstep)..cmp::min(step.xrange.end, cube.len() as i64 + xstep);
+    let yrange = cmp::max(step.yrange.start, -ystep)..cmp::min(step.yrange.end, cube[0].len() as i64 + ystep);
+    let zrange = cmp::max(step.zrange.start, -zstep)..cmp::min(step.zrange.end, cube[0][0].len() as i64 + zstep);
+
+    // println!("Ranges: {:?}, {:?}, {:?}", xrange, yrange, zrange);
+
+    for x in xrange {
+        for y in yrange.clone() {
+            for z in zrange.clone() {
                 // perform index conversion
                 let (x,y,z) = (x + xstep, y + ystep, z + zstep);
 
@@ -90,34 +98,6 @@ fn process_step(cube: &mut Vec<Vec<Vec<bool>>>, step: &Step, xstep: i64, ystep: 
             }
         }
     }
-}
-
-fn get_size(steps: &Vec<Step>) -> ((usize,usize,usize),(i64,i64,i64)) {
-    // get the dimensions of the grid we need to construct
-    // to process all these steps, as well as the minimum value of each range
-    let (mut xrange, mut yrange, mut zrange) = (0..0,0..0,0..0);
-    for step in steps {
-        if step.xrange.start < xrange.start {
-            xrange.start = step.xrange.start;
-        }
-        if step.xrange.end > xrange.end {
-            xrange.end = step.xrange.end;
-        }
-        if step.yrange.start < yrange.start {
-            yrange.start = step.yrange.start;
-        }
-        if step.yrange.end > yrange.end {
-            yrange.end = step.yrange.end;
-        }
-        if step.zrange.start < zrange.start {
-            zrange.start = step.zrange.start;
-        }
-        if step.zrange.end > zrange.end {
-            zrange.end = step.zrange.end;
-        }
-    }
-    let (xsize,ysize,zsize) = (xrange.end - xrange.start, yrange.end - yrange.start, zrange.end - zrange.start);
-    return ((xsize as usize, ysize as usize, zsize as usize),(-xrange.start,-yrange.start,-zrange.start));
 }
 
 fn count(cube: &Vec<Vec<Vec<bool>>>) -> u64 {
@@ -134,6 +114,60 @@ fn count(cube: &Vec<Vec<Vec<bool>>>) -> u64 {
     return count;
 }
 
+fn size(range: &Range<i64>) -> u64 {
+    // return the size of the given range
+    if range.start >= range.end {
+        return 0;
+    } else {
+        return (range.end - range.start) as u64; 
+    }
+}
+
+fn no_overlap(step: &Step, steps: &[Step]) -> u64 {
+    // return the number of cells that step has that _don't_
+    // overlap with the other given steps
+    println!("Comparing step to {} following", steps.len());
+
+    // start our count with the initial number of points
+    let count = size(&step.xrange) * size(&step.yrange) * size(&step.zrange);
+    let mut overlap = 0;
+
+    // construct a list of steps to look at that overlap with this step
+    let mut overlapping_steps = Vec::new();
+    for s in steps {
+        // construct a new step that represents the overlap in range
+        let xrange = cmp::max(step.xrange.start, s.xrange.start)..cmp::min(step.xrange.end, s.xrange.end);
+        let yrange = cmp::max(step.yrange.start, s.yrange.start)..cmp::min(step.yrange.end, s.yrange.end);
+        let zrange = cmp::max(step.zrange.start, s.zrange.start)..cmp::min(step.zrange.end, s.zrange.end);
+
+        // only add if this contains nonzero ranges
+        let o = size(&xrange) * size(&yrange) * size(&zrange);
+        if o != 0 {
+            overlap += o;
+            overlapping_steps.push(Step { action: false, xrange: xrange, yrange: yrange, zrange: zrange });
+        }
+    }
+
+    // for each of these overlapping steps, get their total size minus any overlap they have with all other steps
+    for (i,s1) in overlapping_steps.iter().enumerate() {
+        // construct a copy of the remaining steps with ith index removed
+        let mut subset = Vec::new();
+        for (j,s) in overlapping_steps.iter().enumerate() {
+            if i != j {
+                subset.push(Step { action: false, xrange: s.xrange.clone(), yrange: s.yrange.clone(), zrange: s.zrange.clone() });
+            }
+        }
+        let o = no_overlap(&s1, &subset);
+        // decrement
+        assert!(o <= overlap);
+        overlap -= o;
+    }
+    
+    // the result (i.e. the amount of the given step that _doesn't_ overlap with anything)
+    assert!(count >= overlap);
+    return count - overlap;
+}
+
 fn main() {
     // get the steps of operation
     let steps = parse_input(FILENAME).unwrap();
@@ -144,21 +178,25 @@ fn main() {
 
     // perform the steps of part A
     for (i,step) in steps.iter().enumerate() {
-        println!("Processing step #{}", i+1);
+        // println!("Processing step #{}", i+1);
         process_step(&mut cubeA, step, 50, 50, 50);
     }
     println!("Part A: got {} cubes on.", count(&cubeA));
 
-    // for Part B we don't have a given size restriction. We need to calculate it
-    let ((xsize,ysize,zsize),(xstep,ystep,zstep)) = get_size(&steps);
-    let mut cubeB = vec![vec![vec![false; xsize]; ysize]; zsize];
+    // for Part B we work backwards to get the total of cubes on count
+    let mut on_count = 0;
+    for (i,step) in steps.iter().rev().enumerate() {
+        // println!("Part B: Processing step #{}", steps.len() - i);
 
-    // same as Part A, but bigger
-    for (i,step) in steps.iter().enumerate() {
-        println!("Part B: Processing step #{}", i+1);
-        process_step(&mut cubeB, step, xstep, ystep, zstep);
+        // if this step turns things on, find the cells without overlap with the rest of the ranges
+        if step.action {
+            let tmp = no_overlap(step, &steps[(steps.len() - i)..]);
+            on_count += tmp;
+            println!("Step #{} found {} on: {:?}, {:?}, {:?}", steps.len() - i, tmp, step.xrange, step.yrange, step.zrange);
+        }
+
     }
-    println!("Part B: got {} cubes on.", count(&cubeB));
+    println!("Part B: got {} cubes on.", on_count);
 
 
 
