@@ -1,0 +1,112 @@
+inp w
+INIT
+div z 1
+add x 14
+UPDATE
+add y 12
+FINISH
+
+inp w
+INIT
+div z 1
+add x 15
+UPDATE
+add y 7
+FINISH
+
+inp w
+INIT
+div z 1
+add x 12
+UPDATE
+add y 1
+FINISH
+
+inp w
+INIT
+div z 1
+add x 11
+UPDATE
+add y 2
+FINISH
+
+inp w
+INIT
+div z 26
+add x -5
+UPDATE
+add y 4
+FINISH
+
+inp w
+INIT
+div z 1
+add x 14
+UPDATE
+add y 15
+FINISH
+
+inp w
+INIT
+div z 1
+add x 15
+UPDATE
+add y 11
+FINISH
+
+inp w
+INIT
+div z 26
+add x -13
+UPDATE
+add y 5
+FINISH
+
+inp w
+INIT
+div z 26
+add x -16
+UPDATE
+add y 3
+FINISH
+
+inp w
+INIT
+div z 26
+add x -8
+UPDATE
+add y 9
+FINISH
+
+inp w
+INIT
+div z 1
+add x 15
+UPDATE
+add y 2
+FINISH
+
+inp w
+INIT
+div z 26
+add x -8
+UPDATE
+add y 3
+FINISH
+
+inp w
+INIT
+div z 26
+add x 0
+UPDATE
+add y 3
+FINISH
+
+inp w
+INIT
+div z 26
+add x -4
+UPDATE
+add y 11
+FINISH
+

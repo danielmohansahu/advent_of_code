@@ -1,0 +1,68 @@
+
+
+
+Subroutines:
+
+INIT
+W = M[IDX]
+X = Z[IDX-1] % 26
+
+UPDATE
+X = (X != M[IDX])
+Y = 25 * X + 1
+Z = Z * Y
+Y = M[IDX]
+
+FINISH
+Y = Y * X
+Z = Z + Y
+
+
+FUNCTION(W, Z_i, X_offset, Y_offset, Z_offset = 1)
+{  
+    X = Z_i % 26
+    Z = Z_i / Z_offset
+    X += X_offset
+
+    X = (X != W)        // either 0 or 1
+    Y = 25 * X + 1      // either 1 or 26
+    Z = Z * Y
+    Y = (W + Y_offset) * X      // either 0 or 1
+    Z  = Z + Y
+
+    return Z
+}
+
+// Iteration 1
+Z = M[0] + 12
+
+// Iteration 2
+Z = 26 * (M[0] + 12) + M[1] + 7
+
+// iteration 13
+// again, need Z to be 0
+
+X = Z_i % 26
+Z = Z_i / 26
+if (Z_i % 26) != W {
+    X = 1
+    Y = 26
+    Z = Z_i
+    Y = W + 3
+    Z = 26 * Z_i + W + 3
+} else {
+    X = 0 
+    Y = W + 3
+    Z = Z_i / 26
+}
+
+
+
+
+
+
+// iteration 13
+ => Z_12 needs to be 0
+
+// Iteration 14
+ => Z_13 needs to be 0! Only possible way
