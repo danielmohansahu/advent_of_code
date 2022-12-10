@@ -55,8 +55,34 @@
   )
 )
 
+; Part B requires us to check when the clock cycle and register are aligned
+(defun track-sprite (register)
+  (let ((str ""))
+    ; iterate through register, marking pixels as we go
+    (dotimes (i (length register))
+      ; add a '#' if our sprite is in a good position, else '.'
+      (let ((val (nth i register))
+            (cycle (mod i 40)))
+        (if
+          (< (abs (- val cycle)) 2)
+          (setf str (concatenate 'string str (list #\#)))
+          (setf str (concatenate 'string str (list #\.)))
+        )
+      )
+      ; add a space to split later
+      (if
+        (eq (mod (1+ i) 40) 0)
+        (setf str (concatenate 'string str (list #\Space)))
+      )
+    )
+    (format t "~A~%" str)
+    (str:words str)
+  )
+)
+
 (format t "Register Values: ~A~%" register)
 (format t "Signal Strength Sum (Part A): ~A~%" (calc-signal-strength register))
+(format t "Track Sprite (Part B): ~A~%" (track-sprite register))
 
 
 
