@@ -7,6 +7,7 @@
 
 ; main input file
 ; (defvar filename "test.txt")
+; (defvar filename "test2.txt")
 (defvar filename "input.txt")
 
 (defstruct (point
@@ -61,36 +62,55 @@
   (do
     ( ; local variable nextline is initialized with the first line
       (nextline (read-line stream nil)  (read-line stream nil))
-      (points (list (make-point :x 0 :y 0)))  ; all positions TAIL has been (World coords)
-      (tail (make-point :x 0 :y 0))           ; location of TAIL in World coordinates
-      (head (make-point :x 0 :y 0))           ; location of HEAD relative to TAIL
+      (points (list
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))
+                (list (make-point :x 0 :y 0))))     ; all positions TAIL has been (World coords)
+      (knots (list
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)
+               (make-point :x 0 :y 0)))              ; location of TAIL in World coordinates
     )
     ( ; stopping condition and actions
       (null nextline) ; quits when nextline is null, ie eof
       ; print out final location (for debugging)
-      (format t "Final Locations (HEAD,TAIL): (~A,~A)~%" tail (point-add head tail))
-      (format t "Unique TAIL locations (Part A): ~A~%" (count-unique points))
+      (format t "Final Locations: (~A)~%" knots)
+      (format t "Unique 1st TAIL locations (Part A): ~A~%" (count-unique (nth 1 points)))
+      (format t "Unique 9th TAIL locations (Part B): ~A~%" (count-unique (nth 9 points)))
     )
     ; body of loop; calculate next Head Location and determine Tail action
     (let ((words (str:words nextline)))
       (let ((dir (first words)) (N (parse-integer (second words))))
         ; iterate N times
         (dotimes (n N)
-          (format t "HEAD: ~A, processing ~A:~%" head dir)
-          ; calculate new head location
-          (let ((new-head (move-head head dir)))
-            (format t "  head is now at ~A~%" new-head)
-            ; get TAIL action
-            (let ((tail-action (lookup-action new-head)))
-              (format t "  tail action: ~A~%" tail-action)
-              ; update relative position of HEAD and global position of TAIL
-              (setq tail (point-add tail tail-action))
-              (setq head (point-subtract new-head tail-action))
-              (format t "  head is now: ~A~%" head)
-              (format t "  tail is now: ~A~%" tail)
-              ; save point
-              (setq points (append points (list tail)));
+          ; iterate through our rope sections
+          (dotimes (k (length knots))
+            (if
+              ; if k==0 this is the true HEAD - just move it
+              (eq k 0)
+              (setf (elt knots k) (move-head (nth k knots) dir))
+              ; otherwise determine the relative location of our head
+              (let ((rel-head (point-subtract (nth (1- k) knots) (nth k knots))))
+                ; determine action from relative location of head
+                (setf (elt knots k) (point-add (nth k knots) (lookup-action rel-head)))
+              )
             )
+            ; save whatever update we made to the points list
+            (setf (elt points k) (append (nth k points) (list (nth k knots))))
           )
         )
       )
