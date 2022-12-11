@@ -9,14 +9,9 @@
   inspections ; number of inspections to date
 )
 
-; how we update post-handled item worry level
-(defun boredom-factor (worry)
-  (floor worry 3)
-)
-
 ; initialize our monkeys (hardcoded)
 ; TEST MONKEYS:
-; (defvar all-monkeys
+; (defvar all-monkeys-a
 ;   (list
 ;     (make-monkey :items (list 79 98)
 ;                  :inspections 0
@@ -38,7 +33,7 @@
 ; )
 
 ; INPUT MONKEYS:
-(defvar all-monkeys
+(defvar all-monkeys-a
   (list
     ; monkey 0
     (make-monkey :items (list 54 98 50 94 69 62 53 85)
@@ -83,23 +78,26 @@
   )
 )
 
+; make a copy for Part B to keep same initial conditions
+(defvar all-monkeys-b (copy-list all-monkeys-a))
+
 ; simulate a single round with all our monkeys
-(defun run-round (monkeys)
+(defun run-round (monkeys worry-containment)
   ; iterate through monkeys
   (dotimes (i (length monkeys))
     (let ((m (nth i monkeys)))
-      (format t "  monkey ~A:~%" i)
+      ; (format t "  monkey ~A:~%" i)
       ; iterate through items
       (loop while (/= 0 (length (monkey-items m))) do
             ; pop item -> handle (affects worry) -> reduce worry -> throw
             (let ((val (pop (monkey-items m))))
-              (format t "    starting val: ~A~%" val)
+              ; (format t "    starting val: ~A~%" val)
               (setf val (funcall (monkey-operation m) val))
-              (format t "    val after op: ~A~%" val)
-              (setq val (boredom-factor val))
-              (format t "    val becalmed: ~A~%" val)
+              ; (format t "    val after op: ~A~%" val)
+              (setq val (funcall worry-containment val))
+              ; (format t "    val becalmed: ~A~%" val)
               (let ((target-idx (funcall (monkey-test m) val)))
-                (format t "    tossing ~A to ~A~%" val target-idx)
+                ; (format t "    tossing ~A to ~A~%" val target-idx)
                 (let ((target-monkey (nth target-idx monkeys)))
                   (setf (monkey-items target-monkey) (append (monkey-items target-monkey) (list val)))
                 )
@@ -112,13 +110,30 @@
   )
 )
 
-; simulate rounds
-(dotimes (n 20)
-  (format t "Round ~A~%" n)
-  (run-round all-monkeys)
+; simulate rounds - Part A
+; commented - copy-list isn't a deep copy!
+; (defun part-a-containment (val) (floor val 3))
+; (dotimes (n 20)
+;   (run-round all-monkeys-a #'part-a-containment)
+; )
+; (format t "Part A:~%")
+; (dotimes (n (length all-monkeys-a))
+;   (format t "  monkey ~A inspected ~A items.~%" n (monkey-inspections (nth n all-monkeys-a)))
+; )
+
+; simulate rounds - Part B
+;  we can drop values that are congruent base LCM (test primes)
+(defun part-b-containment (val)
+  ; (mod val (* 13 17 19 23))
+  (mod val (* 2 3 5 7 11 13 17 19))
 )
-; print out results
-(dotimes (n (length all-monkeys))
-  (format t "Monkey ~A inspected ~A items.~%" n (monkey-inspections (nth n all-monkeys)))
+
+(dotimes (n 10000)
+  ; (format t "Round ~A~%" n)
+  (run-round all-monkeys-b #'part-b-containment)
+)
+(format t "Part B:~%")
+(dotimes (n (length all-monkeys-b))
+  (format t "  monkey ~A inspected ~A items.~%" n (monkey-inspections (nth n all-monkeys-b)))
 )
 
