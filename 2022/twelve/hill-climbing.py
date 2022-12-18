@@ -39,13 +39,13 @@ def get_valid_children(i, j, grid):
     """ Return all valid children next to the given node. """
     val = grid[i,j]
     children = []
-    if (i > 0) and (grid[i - 1, j] - val <= 1):
+    if (i > 0) and (val - grid[i - 1, j] <= 1):
         children.append((i - 1, j))
-    if (i + 1 < grid.shape[0]) and (grid[i + 1, j] - val <= 1):
+    if (i + 1 < grid.shape[0]) and (val - grid[i + 1, j] <= 1):
         children.append((i + 1, j))
-    if (j > 0) and (grid[i, j - 1] - val <= 1):
+    if (j > 0) and (val - grid[i, j - 1] <= 1):
         children.append((i, j - 1))
-    if (j + 1 < grid.shape[1]) and (grid[i, j + 1] - val <= 1):
+    if (j + 1 < grid.shape[1]) and (val - grid[i, j + 1] <= 1):
         children.append((i, j + 1))
     return children
 
@@ -58,6 +58,7 @@ class Node:
 def djikstra(start, goal, grid):
     """ Djikstra's path search algorithm """
     # node class - contains visitation variables
+    visited = []
     unvisited = []
     for i in range(grid.shape[0]):
         for j in range(grid.shape[1]):
@@ -74,12 +75,12 @@ def djikstra(start, goal, grid):
         return element, nodes
     current,unvisited = get_next_node(unvisited)
 
-    # iterate until we find our goal or run out of nodes
+    # iterate to populate entire grid's distances
+    goal_dist = np.inf
     while len(unvisited) != 0:
-        # stop condition - current is our destination node!
+        # if this is our goal, save its distane but don't stop iterating
         if (current.i, current.j) == goal:
-            print("Found goal node!")
-            return current.dist
+            goal_dist = current.dist
         # get potential children of current node
         for (i,j) in get_valid_children(current.i, current.j, grid):
             # find associated child node
@@ -91,43 +92,41 @@ def djikstra(start, goal, grid):
             # if unvisited, update value
             child.dist = min(child.dist, current.dist + 1)
         # select next unvisited node as the lowest cost option
+        visited.append(current)
         current,unvisited = get_next_node(unvisited)
-
-    assert goal == (current.i,current.j), "Unexpectedly didn't find goal node."
-    return current.dist
-
-def brute_force(start, goal, grid):
-    """ Quasi-Djikstra, based on my faulty memory. """
-    # initialize loop variables
-    paths = []          # 
-    current = [[start]]
-    while len(current) != 0:
-        # initialize the next set of nodes to check
-        next_loop_paths = []
-        # iterate through current nodes, checking for viable moves
-        for path in current:
-            for child in get_valid_children(*path[-1], grid):
-                newpath = path + [child]
-                # check for success:
-                if child == goal:
-                    paths.append(newpath)
-                    continue
-                # otherwise , check if this path should continue to the next round
-                if child not in path:
-                    next_loop_paths.append(newpath)
-        # set our next loop paths for, well, the next loop
-        current = next_loop_paths
-        print(f"checking {len(current)} paths...")
-    # return the length of the best path
-    assert len(paths) != 0, "Failed to find a successful path."
-    return min([len(p) for p in paths]) - 1
+    visited.append(current)
+    assert len(visited) == grid.size, "Didn't flesh out the whole map!"
+    return goal_dist, visited
 
 if __name__ == "__main__":
     # load input grid
     start, goal, grid = load_as_grid(INPUT)
-    print(f"Grid: \n{grid}")
 
-    # find optimal path, suboptimally
-    # steps = brute_force(start, goal, grid)
-    steps = djikstra(start, goal, grid)
-    print(f"Found shortest path in {steps}")
+    # Part A find optimal path, suboptimally
+    steps, nodes = djikstra(goal, start, grid)
+    print(f"Part A: Found shortest path in {steps}")
+
+    # Part B - find shortest path from any low lying grid cell
+    assert len(nodes) == grid.size, "Not enough nodes found for Part B!"
+
+    # find all cells with values of 0 (== 'a')
+    candidates = []
+    for i in range(grid.shape[0]):
+        for j in range(grid.shape[1]):
+            if grid[i,j] == 0:
+                candidates.append((i,j))
+    
+    # use the solved path from Part A to get the distance from goal to start for each candidate
+    shortest_dist = np.inf
+    shortest = None
+    for i,candidate in enumerate(candidates):
+        try:
+            node = next(node for node in nodes if (node.i,node.j) == candidate)
+        except StopIteration:
+            import pdb;pdb.set_trace()
+        if node.dist < shortest_dist:
+            print(f" found a better path {candidate}")
+            shortest_dist = node.dist
+            shortest = candidate
+    print(f"Part B: Best path starts at {shortest} with {shortest_dist} steps required.")
+
