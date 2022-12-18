@@ -2,6 +2,7 @@
 """ Trying to find cell signal (now with path planning!) """
 
 # STL
+from dataclasses import dataclass
 
 # Numpy
 import numpy as np
@@ -48,6 +49,53 @@ def get_valid_children(i, j, grid):
         children.append((i, j + 1))
     return children
 
+@dataclass
+class Node:
+    dist: int
+    i: int
+    j: int
+
+def djikstra(start, goal, grid):
+    """ Djikstra's path search algorithm """
+    # node class - contains visitation variables
+    unvisited = []
+    for i in range(grid.shape[0]):
+        for j in range(grid.shape[1]):
+            # mark start node distance as zero
+            if (i,j) == start:
+                unvisited.append(Node(0, i, j))
+            else:
+                unvisited.append(Node(np.inf, i, j))
+
+    # convenience function to grab the next lowest cost unvisited node
+    def get_next_node(nodes):
+        nodes.sort(key=lambda n: n.dist)
+        element = nodes.pop(0)
+        return element, nodes
+    current,unvisited = get_next_node(unvisited)
+
+    # iterate until we find our goal or run out of nodes
+    while len(unvisited) != 0:
+        # stop condition - current is our destination node!
+        if (current.i, current.j) == goal:
+            print("Found goal node!")
+            return current.dist
+        # get potential children of current node
+        for (i,j) in get_valid_children(current.i, current.j, grid):
+            # find associated child node
+            try:
+                child = next(node for node in unvisited if (node.i == i and node.j == j))
+            except StopIteration:
+                # child already visited - skip
+                continue
+            # if unvisited, update value
+            child.dist = min(child.dist, current.dist + 1)
+        # select next unvisited node as the lowest cost option
+        current,unvisited = get_next_node(unvisited)
+
+    assert goal == (current.i,current.j), "Unexpectedly didn't find goal node."
+    return current.dist
+
 def brute_force(start, goal, grid):
     """ Quasi-Djikstra, based on my faulty memory. """
     # initialize loop variables
@@ -69,6 +117,7 @@ def brute_force(start, goal, grid):
                     next_loop_paths.append(newpath)
         # set our next loop paths for, well, the next loop
         current = next_loop_paths
+        print(f"checking {len(current)} paths...")
     # return the length of the best path
     assert len(paths) != 0, "Failed to find a successful path."
     return min([len(p) for p in paths]) - 1
@@ -79,5 +128,6 @@ if __name__ == "__main__":
     print(f"Grid: \n{grid}")
 
     # find optimal path, suboptimally
-    steps = brute_force(start, goal, grid)
+    # steps = brute_force(start, goal, grid)
+    steps = djikstra(start, goal, grid)
     print(f"Found shortest path in {steps}")
