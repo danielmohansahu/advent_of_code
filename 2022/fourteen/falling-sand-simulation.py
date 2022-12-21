@@ -6,8 +6,8 @@
 # Numpy
 import numpy as np
 
-INPUT = "test.txt"
-# INPUT = "input.txt"
+# INPUT = "test.txt"
+INPUT = "input.txt"
 
 def parse_grid(filename):
     """ Get grid representation from input file."""
@@ -49,6 +49,75 @@ def parse_grid(filename):
         print(grid[:,494:504])
     return grid
 
+def drop_one_grain(grid, start) -> bool:
+    """ Trace the path of one grain to its final location.
+
+    Returns TRUE if the grid was modified, FALSE otherwise,
+    which indicates sands are falling into the abyss.
+    """
+    # convenience function to return the next empty spot
+    #  in the current column - if None, it's the void
+    def next_below(i,j):
+        assert grid[i,j] == 0, "Given a non-empty grid cell as starting point."
+        while i < (grid.shape[0] - 1) and grid[i+1,j] == 0:
+            i += 1
+        # check if we reached the abyss
+        assert grid[i,j] == 0, "Implementation bug."
+        assert (i == grid.shape[0] - 1 or grid[i+1,j] > 0), "Implementation bug."
+        if i == grid.shape[0] - 1:
+            return None
+        return i,j
+    
+    # get next lowest free space
+    if option := next_below(*start) is None:
+        print("Abyss")
+        return False
+    else:
+        i,j = next_below(*start)
+
+    # check if we can drop lower to the left or right
+    if j != 0 and grid[i + 1, j - 1] == 0:
+        return drop_one_grain(grid, (i + 1, j - 1))
+    if j != grid.shape[1] - 1 and grid[i + 1, j + 1] == 0:
+        return drop_one_grain(grid, (i + 1, j + 1))
+
+    # if we can't drop anymore, set this cell to filled
+    grid[i,j] = 1
+    return True
+
+def print_grid(grid, col_start, col_end):
+    """ Match visualization in problem statement. """
+    def val_to_char(val):
+        if val == 0:
+            return "."
+        elif val == 1:
+            return "o"
+        elif val == 255:
+            return "#"
+        assert False, "Implementation bug."
+    for i in range(grid.shape[0]):
+        string = ""
+        for j in range(col_start, col_end):
+            string += f" {val_to_char(grid[i,j])}"
+        print(string)
+
 if __name__ == "__main__":
-    sand = np.array([0,500])
+    # parse input into grid
+    sand = (0,500)
     grid = parse_grid(INPUT)
+
+    # Part A - drop sand until it can't drop anymore
+    count = 0
+    initial_sum = grid.sum()
+    while True:
+        count += 1
+        if not drop_one_grain(grid, sand):
+            print("Terminal state achieved.")
+            break
+        print(f"iteration {count}:")
+        print_grid(grid, 460, grid.shape[1])
+    print(f"Final state:")
+    print_grid(grid, 460, grid.shape[1])
+
+    print(f"Part A: {grid.sum() - initial_sum} grains fell before the Abyss took the rest.")
+    import pdb;pdb.set_trace()
