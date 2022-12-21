@@ -69,16 +69,16 @@ def drop_one_grain(grid, start) -> bool:
         return i,j
     
     # get next lowest free space
-    if option := next_below(*start) is None:
+    if (option := next_below(*start)) is None:
         print("Abyss")
         return False
     else:
         i,j = next_below(*start)
 
     # check if we can drop lower to the left or right
-    if j != 0 and grid[i + 1, j - 1] == 0:
+    if grid[i + 1, j - 1] == 0:
         return drop_one_grain(grid, (i + 1, j - 1))
-    if j != grid.shape[1] - 1 and grid[i + 1, j + 1] == 0:
+    if grid[i + 1, j + 1] == 0:
         return drop_one_grain(grid, (i + 1, j + 1))
 
     # if we can't drop anymore, set this cell to filled
@@ -108,7 +108,6 @@ if __name__ == "__main__":
 
     # Part A - drop sand until it can't drop anymore
     count = 0
-    initial_sum = grid.sum()
     while True:
         count += 1
         if not drop_one_grain(grid, sand):
@@ -119,5 +118,4 @@ if __name__ == "__main__":
     print(f"Final state:")
     print_grid(grid, 460, grid.shape[1])
 
-    print(f"Part A: {grid.sum() - initial_sum} grains fell before the Abyss took the rest.")
-    import pdb;pdb.set_trace()
+    print(f"Part A: {grid[grid==1].size} grains fell before the Abyss took the rest.")
