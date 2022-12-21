@@ -7,8 +7,12 @@ from dataclasses import dataclass
 # INPUTS
 # INPUT = "test.txt"
 # PART_A_ROW = 10
+# PART_B_BOUND = 20
+# PART_B_MULTIPLE = 4000000
 INPUT = "input.txt"
 PART_A_ROW = 2000000
+PART_B_BOUND = 4000000
+PART_B_MULTIPLE = 4000000
 
 @dataclass
 class Sensor:
@@ -51,29 +55,69 @@ def merge_bounds(bounds):
     low, high = bounds[0]
     
     for iv in bounds[1:]:
-        if iv[0] <= high:  # new interval overlaps current run
+        if iv[0] <= high + 1:  # new interval overlaps current run
             high = max(high, iv[1])  # merge with the current run
         else:  # current run is over
             merged.append([low, high])  # yield accumulated interval
             low, high = iv  # start new run
     
     merged.append([low,high])
-    print(f"{bounds} -> {merged}.")
+    return merged
 
-    # count points in range
-    count = 0
-    for a,b in merged:
-        count += (b - a)
-    return count
-    
+def get_bounds_for_row(row, sensors):
+    bounds = []
+    for sensor in sensors:
+        if (r := sensor.points_in_row(row)) is not None:
+            bounds.append(r)
+    return merge_bounds(bounds)
+
 if __name__ == "__main__":
     sensors = parse(INPUT)
 
     # Part A: check the number of points in the given row
-    bounds = []
-    for sensor in sensors:
-        if (r := sensor.points_in_row(PART_A_ROW)) is not None:
-            bounds.append(r)
+    bounds = get_bounds_for_row(PART_A_ROW, sensors)
+    count = 0
+    for a,b in bounds:
+        count += (b - a)
 
-    print(f"Part A: {merge_bounds(bounds)} points in Row {PART_A_ROW} are excluded.")
+    print(f"Part A: {count} points in Row {PART_A_ROW} are excluded.")
+
+    # For part B we need to iterate through all rows in our range and find the 
+    #  only one with a viable candidate
+    candidate = None
+    for row in range(PART_B_BOUND + 1):
+        bounds = get_bounds_for_row(row, sensors)
+        # check if there's an uncovered spot in this row
+        for a,b in bounds:
+            if a > 0:
+                print(f"Part B candidate: ({a-1},{row})")
+                candidate = (a-1, row)
+            elif b < PART_B_BOUND:
+                print(f"Part B candidate: ({b+1},{row})")
+                candidate = (b+1, row)
+    freq = candidate[0] * PART_B_MULTIPLE + candidate[1]
+    print(f"Part B: Found signal at {candidate} with frequency {freq}.")
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
